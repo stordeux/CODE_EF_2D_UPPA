@@ -31,10 +31,11 @@ wheels/
 *.npz
 *.mat
 
-# Output files
+# Output files from examples
 *.vtk
 *.vtu
 *.pvd
+*_solution.png
 results/
 output/
 
