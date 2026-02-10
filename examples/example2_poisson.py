@@ -132,7 +132,7 @@ def main():
     
     # Erreur / Error
     ax = axes[1, 0]
-    ax.set_title(f"Erreur absolue / Absolute error (L2={relative_error:.2e})")
+    ax.set_title(f"Erreur absolue / Absolute error (erreur L2={relative_error:.2e})")
     contour = ax.tricontourf(coords[:, 0], coords[:, 1], triangles, error, levels=20, cmap='hot')
     plt.colorbar(contour, ax=ax)
     ax.set_xlabel("x")
@@ -142,7 +142,10 @@ def main():
     # Comparaison sur une ligne / Comparison on a line
     ax = axes[1, 1]
     ax.set_title("Comparaison y=0.5 / Comparison at y=0.5")
-    mid_nodes = [i for i, node in enumerate(mesh.nodes) if abs(node.y - 0.5) < 0.05]
+    # Utiliser une tolérance basée sur l'espacement du maillage
+    # Use tolerance based on mesh spacing
+    dy = ly / ny
+    mid_nodes = [i for i, node in enumerate(mesh.nodes) if abs(node.y - 0.5) < dy/2]
     mid_nodes = sorted(mid_nodes, key=lambda i: mesh.nodes[i].x)
     x_vals = [mesh.nodes[i].x for i in mid_nodes]
     y_num = [solution[i] for i in mid_nodes]

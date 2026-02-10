@@ -18,6 +18,10 @@ class FESolver:
     Finite element method solver
     """
     
+    # Valeur de pénalisation pour les conditions de Dirichlet
+    # Penalty value for Dirichlet boundary conditions
+    DEFAULT_PENALTY = 1e10
+    
     def __init__(self, mesh):
         """
         Initialise le solveur
@@ -66,7 +70,7 @@ class FESolver:
         # Conversion en format CSR pour la résolution / Convert to CSR format for solving
         self.K = self.K.tocsr()
     
-    def apply_dirichlet_bc(self, node_indices: List[int], values: List[float]):
+    def apply_dirichlet_bc(self, node_indices: List[int], values: List[float], penalty: float = None):
         """
         Applique des conditions aux limites de Dirichlet
         Apply Dirichlet boundary conditions
@@ -74,10 +78,13 @@ class FESolver:
         Args:
             node_indices: Indices des noeuds / Node indices
             values: Valeurs imposées / Imposed values
+            penalty: Valeur de pénalisation (optionnel, défaut: 1e10) / Penalty value (optional, default: 1e10)
         """
+        if penalty is None:
+            penalty = self.DEFAULT_PENALTY
+        
         for node_idx, value in zip(node_indices, values):
             # Méthode de pénalisation / Penalty method
-            penalty = 1e10
             self.K[node_idx, node_idx] += penalty
             self.F[node_idx] += penalty * value
     
