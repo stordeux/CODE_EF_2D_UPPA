@@ -84,7 +84,8 @@ def main():
     
     # Maillage / Mesh
     ax1.set_title("Maillage / Mesh")
-    ax1.triplot(coords[:, 0], coords[:, 1], triangles=[[e.nodes[0].id, e.nodes[1].id, e.nodes[2].id] for e in mesh.elements], 'b-', linewidth=0.5)
+    triangles_mesh = [[e.nodes[0].id, e.nodes[1].id, e.nodes[2].id] for e in mesh.elements]
+    ax1.triplot(coords[:, 0], coords[:, 1], triangles_mesh, 'b-', linewidth=0.5)
     ax1.set_xlabel("x")
     ax1.set_ylabel("y")
     ax1.set_aspect('equal')
