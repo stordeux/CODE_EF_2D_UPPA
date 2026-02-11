@@ -6,7 +6,7 @@ from mes_packages.calcul_symbolique import build_f_and_grads
 
 
 def test_build_masse_CG():
-    mesh = create_mesh_circle_in_square(0.1, 0.3,0.02)
+    mesh = create_mesh_circle_in_square(0.1, 0.3,0.05)
     ordre = 3
     M_CG = build_masse_CG(mesh, ordre, verbose=False)
 
@@ -55,7 +55,7 @@ def test_build_masse_CG():
 
 
 def test_termes_source_frontiere_CG():
-    mesh = create_mesh_circle_in_square(0.1, 0.3,0.02)
+    mesh = create_mesh_circle_in_square(0.1, 0.3,0.05)
     ordre =2
     M_bord_CG = build_masse_frontiere_CG(mesh, ordre)
     # Définir la fonction source
