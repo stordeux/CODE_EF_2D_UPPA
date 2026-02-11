@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bib-code-ef"
+version = "0.1.0"
+description = "Bibliotheque Python pour elements finis 2D"
+authors = [
+  { name = "Sebastien Tordeux" }
+]
+requires-python = ">=3.9"
+
+dependencies = [
+  "numpy",
+  "scipy",
+  "pygmsh",
+  "matplotlib",
+  "sympy",
+  "meshio",
+  "pygmsh",
+  "typing",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]

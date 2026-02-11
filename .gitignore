@@ -1,0 +1,27 @@
+# Environnements virtuels
+.venv/
+env/
+venv/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Pytest
+.pytest_cache/
+
+# VS Code
+.vscode/
+
+# Fichiers sensibles
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
