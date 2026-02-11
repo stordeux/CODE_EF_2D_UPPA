@@ -1,197 +1,131 @@
-# bib-code-ef
+# CODE_EF_2D_UPPA
 
-Bibliothèque Python pour l’**analyse numérique par éléments finis en dimension 2**  
-(méthodes DG et CG, quadrature, maillages, matrices de référence, visualisation).
-
-Cette bibliothèque est utilisée dans le cadre du cours  
-**Analyse Numérique – Éléments Finis**.
+Finite Element Methods (2D) --- Teaching Repository\
+Université de Pau et des Pays de l'Adour (UPPA)
 
 ---
 
-## Prérequis
+## 📚 Description
 
-- **Python ≥ 3.9** (Python 3.14 supporté)
-- Windows / Linux / macOS
-- VS Code recommandé
+This repository contains the teaching material for the 2D Finite Element
+course:
 
----
+- Core finite element library (`BIB/mes_packages`)
+- Unit tests
+- Jupyter notebooks (examples and demonstrations)
+- Static FEM implementation
+- Continuous Galerkin (CG) and Discontinuous Galerkin (DG) methods
 
-## Structure du projet
-
-```
-
-CODE_EF_2D/
-├── BIB/
-│ ├── pyproject.toml
-│ └── mes_packages/
-├── examples/
-├── notebooks/
-├── .venv/
-└── README.md
-
-```
+The repository is structured to allow both pedagogical use and
+structured code experimentation.
 
 ---
 
-## Création de l’environnement virtuel (recommandée)
+## 🔁 Repository Hosting
 
-Depuis la racine du projet :
+This project is hosted on **two platforms**:
 
-```bash
-python -m venv .venv
-```
+### 🌍 GitHub (Main Repository)
 
-### Activation
+Used as the primary development repository and external backup.
 
-- **Windows (PowerShell)** :
+https://github.com/stordeux/CODE_EF_2D_UPPA
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
+### 🏫 GitLab UPPA (Institutional Repository)
 
-- **Linux / macOS** :
+Used for institutional hosting and student access.
 
-```bash
-source .venv/bin/activate
-```
+git@git.univ-pau.fr:stordeux/ef_ed_upp.git
 
-Le prompt doit commencer par :
-
-```
-(.venv)
-```
+Both repositories contain identical content and are synchronized
+manually.
 
 ---
 
-## Installation de la bibliothèque
+## 👩‍🎓 Student Access
 
-⚠️ Cette étape doit être faite **dans le `.venv` activé**.
+Students are granted **read-only access** via GitLab UPPA.
 
-Depuis la racine du projet :
+Permissions: - ✔ Clone the repository - ✔ Download the source code - ✘
+No push access - ✘ No modification rights
 
-```bash
-python -m pip install -e BIB
-```
-
-Cette commande installe automatiquement toutes les dépendances
-(`numpy`, `scipy`, `matplotlib`, `sympy`, `meshio`, `pygmsh`, `gmsh`).
+The repository must not be redistributed.
 
 ---
 
-## Vérification de l’installation
+## 💻 Installation
 
-```bash
-python -c "import mes_packages; print('OK mes_packages')"
-```
+### Clone the repository
 
-Vérification complète :
+Using SSH (recommended):
 
-```bash
-python -c "import meshio, pygmsh, mes_packages; print('OK tout est installé')"
-```
+    git clone git@git.univ-pau.fr:stordeux/ef_ed_upp.git
 
----
+Or via GitHub:
 
-## Utilisation dans VS Code
-
-1. `Ctrl + Shift + P`
-2. **Python: Select Interpreter**
-3. Choisir :
-
-   ```
-   Python 3.x (.venv)
-   ```
-
-4. Recharger la fenêtre :
-
-   ```
-   Ctrl + Shift + P → Reload Window
-   ```
+    git clone https://github.com/stordeux/CODE_EF_2D_UPPA.git
 
 ---
 
-## Utilisation des notebooks Jupyter
+### Create a virtual environment
 
-1. Ouvrir un notebook (`.ipynb`)
-2. En haut à droite, cliquer sur le kernel
-3. Sélectionner :
+Windows:
 
-   ```
-   Python 3.x (.venv)
-   ```
+    python -m venv .venv
+    .venv\Scripts\activate
 
-4. Redémarrer le kernel si nécessaire
+Linux / macOS:
 
-### Vérification dans un notebook
-
-```python
-import sys
-print(sys.executable)
-```
-
-Le chemin affiché doit contenir :
-
-```
-.../CODE_EF_2D/.venv/...
-```
+    python -m venv .venv
+    source .venv/bin/activate
 
 ---
 
-## Imports usuels
+### Install the internal package
 
-```python
-from mes_packages.sparse import COOMatrix
-from mes_packages.methode_DG import build_nodal_vector_DG
-from mes_packages.methode_CG import build_masse_CG
-from mes_packages.mesh import create_mesh_circle_in_square
-```
+    pip install -e BIB
 
 ---
 
-## Développement
+## 🧪 Running Tests
 
-- Les modifications dans `BIB/mes_packages/` sont prises en compte immédiatement
-- En cas de modification de `pyproject.toml`, relancer :
-
-```bash
-python -m pip install -e BIB
-```
+    pytest BIB/tests
 
 ---
 
-## Problèmes courants
+## 📂 Repository Structure
 
-### `ModuleNotFoundError` ou `meshio is not installed`
-
-- Vérifier que le `.venv` est activé
-- Vérifier que le bon interpréteur / kernel est sélectionné
-- Réinstaller la bibliothèque :
-
-```bash
-python -m pip install -e BIB
-```
+    BIB/
+        mes_packages/
+        tests/
+    examples/
+    notebooks/
+    EF_2D_statique.ipynb
 
 ---
 
-## Bonnes pratiques
+## 🛠 Development Workflow
 
-- Ne pas modifier `sys.path`
-- Ne pas définir `PYTHONPATH`
-- Ne pas copier la bibliothèque dans `.venv`
-- Utiliser un seul environnement Python par projet
+Push to GitHub (main):
 
----
+    git push
 
-## Auteur
+Push to GitLab:
 
-- **Sébastien Tordeux**
+    git push gitlab main
 
 ---
 
-## Licence
+## 📜 Academic Integrity
 
-Usage pédagogique et académique.
+This repository is provided strictly for educational use.
 
-```
+Students must: - Work independently - Not redistribute solutions - Not
+publish modified versions publicly
 
-```
+---
+
+## 👤 Author
+
+Sébastien Tordeux\
+UPPA -- Applied Mathematics
