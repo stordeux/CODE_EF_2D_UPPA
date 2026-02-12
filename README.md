@@ -1,73 +1,74 @@
-# CODE_EF_2D_UPPA
+CODE_EF_2D_UPPA
 
-Finite Element Methods (2D) --- Teaching Repository\
+Finite Element Methods (2D) — Teaching Repository
 Université de Pau et des Pays de l'Adour (UPPA)
 
 ---
 
-## 📚 Description
+DESCRIPTION
 
-This repository contains the teaching material for the 2D Finite Element
-course:
+This repository contains teaching material for the 2D Finite Element course:
 
-- Core finite element library (`BIB/mes_packages`)
+- Core finite element Python library (src/mes_packages)
 - Unit tests
 - Jupyter notebooks (examples and demonstrations)
 - Static FEM implementation
 - Continuous Galerkin (CG) and Discontinuous Galerkin (DG) methods
 
-The repository is structured to allow both pedagogical use and
-structured code experimentation.
+The repository is structured for pedagogical use and reproducible scientific computing.
 
 ---
 
-## 🔁 Repository Hosting
+REPOSITORY HOSTING
 
-This project is hosted on **two platforms**:
+This project is hosted on two platforms.
 
-### 🌍 GitHub (Main Repository)
-
-Used as the primary development repository and external backup.
+GitHub (Main Repository)
+Primary development repository and external backup.
 
 https://github.com/stordeux/CODE_EF_2D_UPPA
 
-### 🏫 GitLab UPPA (Institutional Repository)
-
-Used for institutional hosting and student access.
+GitLab UPPA (Institutional Repository)
+Institutional hosting and student access.
 
 git@git.univ-pau.fr:stordeux/ef_ed_upp.git
 
-Both repositories contain identical content and are synchronized
-manually.
+Both repositories contain identical content and are synchronized manually.
 
 ---
 
-## 👩‍🎓 Student Access
+STUDENT ACCESS
 
-Students are granted **read-only access** via GitLab UPPA.
+Students have read-only access via GitLab UPPA.
 
-Permissions: - ✔ Clone the repository - ✔ Download the source code - ✘
-No push access - ✘ No modification rights
+Permissions:
+
+- Clone the repository
+- Download the source code
+- No push access
+- No modification rights
 
 The repository must not be redistributed.
 
 ---
 
-## 💻 Installation
+INSTALLATION
 
-### Clone the repository
+1. Clone the repository
 
 Using SSH (recommended):
 
     git clone git@git.univ-pau.fr:stordeux/ef_ed_upp.git
+    cd CODE_EF_2D_UPPA
 
 Or via GitHub:
 
     git clone https://github.com/stordeux/CODE_EF_2D_UPPA.git
+    cd CODE_EF_2D_UPPA
 
 ---
 
-### Create a virtual environment
+2. Create a virtual environment
 
 Windows:
 
@@ -81,32 +82,48 @@ Linux / macOS:
 
 ---
 
-### Install the internal package
+3. Install the finite element library
 
-    pip install -e BIB
+   pip install -e .
 
----
-
-## 🧪 Running Tests
-
-    pytest BIB/tests
+This installs the package "mes_packages" in editable mode.
 
 ---
 
-## 📂 Repository Structure
+RUNNING TESTS
 
-    BIB/
-        mes_packages/
-        tests/
-    examples/
-    notebooks/
-    EF_2D_statique.ipynb
+    pytest
 
 ---
 
-## 🛠 Development Workflow
+USING THE NOTEBOOKS
 
-Push to GitHub (main):
+After installation, notebooks in "examples/" and "notebooks/" can import the library with:
+
+    from mes_packages import *
+
+Make sure the Jupyter kernel uses the virtual environment ".venv".
+
+---
+
+REPOSITORY STRUCTURE
+
+src/
+mes_packages/ finite element library
+
+tests/ unit tests
+examples/ usage examples
+notebooks/ teaching notebooks
+
+pyproject.toml package configuration
+README.md
+LICENSE
+
+---
+
+DEVELOPMENT WORKFLOW
+
+Push to GitHub:
 
     git push
 
@@ -116,16 +133,19 @@ Push to GitLab:
 
 ---
 
-## 📜 Academic Integrity
+ACADEMIC INTEGRITY
 
 This repository is provided strictly for educational use.
 
-Students must: - Work independently - Not redistribute solutions - Not
-publish modified versions publicly
+Students must:
+
+- Work independently
+- Not redistribute solutions
+- Not publish modified versions publicly
 
 ---
 
-## 👤 Author
+AUTHOR
 
-Sébastien Tordeux\
-UPPA -- Applied Mathematics
+Sébastien Tordeux
+UPPA — Applied Mathematics
