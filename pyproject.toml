@@ -19,8 +19,7 @@ dependencies = [
   "sympy",
   "meshio",
   "pygmsh",
-  "typing",
 ]
 
 [tool.setuptools.packages.find]
-where = ["."]
+where = ["src"]

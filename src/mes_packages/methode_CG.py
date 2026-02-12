@@ -542,6 +542,7 @@ def plot_nodal_vector_CG(U_CG, mesh, ordre:int, title):
     Visualise un vecteur nodal C0 en le convertissant en DG, puis en appelant
     la routine de tracé DG.
     """
+    U_CG = U_CG.flatten()
     # DDL locaux et géométrie du maillage
     Nloc = (ordre + 1) * (ordre + 2) // 2
     points = mesh.points[:, :2]
