@@ -92,7 +92,7 @@ def test_termes_source_frontiere_CG():
 
 
 def test_matrice_CG_masse_et_rigidite():
-    mesh= create_mesh_circle_in_square(0.1, 0.3,0.02)
+    mesh= create_mesh_circle_in_square(0.1, 0.3,0.05)
     ordre = 2
     f1 = lambda x, y: 1
     fx = lambda x, y: x
