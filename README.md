@@ -123,13 +123,15 @@ LICENSE
 
 DEVELOPMENT WORKFLOW
 
-Push to GitHub:
+# Git — Workflow rapide
 
-    git push
+A taper dans un powershell
 
-Push to GitLab:
-
-    git push gitlab main
+git pull # récupérer dernières modifications
+git status # voir les fichiers modifiés
+git add . # ajouter les modifications
+git commit -m "message" # enregistrer les changements
+git push && git pushall # envoyer vers GitHub (+ GitLab optionnel)
 
 ---
 
