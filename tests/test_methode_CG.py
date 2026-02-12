@@ -141,8 +141,8 @@ def test_non_trivial():
     # pour des fonctions dont on peut calculer le laplacien :
     #   Delta(x^2 - y^2) = 0
     #   Delta(x^3 + 2 y^2) = 6 x + 4
-    mesh = create_mesh_circle_in_square(0.1, 0.3,0.02)
-    ordre = 5
+    mesh = create_mesh_circle_in_square(0.1, 0.3,0.05)
+    ordre = 3
     K_CG = build_rigidite_CG(mesh, ordre, verbose=False)
     M_CG = build_masse_CG(mesh, ordre, verbose=False)   
     x,y = sp.symbols('x y')

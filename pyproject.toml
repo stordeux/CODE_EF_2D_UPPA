@@ -18,7 +18,6 @@ dependencies = [
   "matplotlib",
   "sympy",
   "meshio",
-  "pygmsh",
 ]
 
 [tool.setuptools.packages.find]
