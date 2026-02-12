@@ -49,13 +49,13 @@ class COOMatrix:
     def solveLU(self, F):
         F = np.asarray(F).reshape(-1)
         x = self.lu_decomp.solve(F)
-        return x.reshape((self.nb_lig, 1))    
+        return x #.reshape((self.nb_lig, 1))    
     def solve(self, F):
         self.to_csc()
         self.lu_decomp = splu(self.csc)
         F = np.asarray(F).reshape(-1)
         x = self.lu_decomp.solve(F)
-        return x.reshape((self.nb_lig, 1))    
+        return x #.reshape((self.nb_lig, 1))    
 
 
     def __add__(self, other):

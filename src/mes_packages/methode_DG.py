@@ -346,7 +346,7 @@ def build_mixte_globale_DG(mesh, ordre, Matx, Maty):
                 Matx.ajout(iglob1, iglob2, Klocx[iloc1, iloc2])
                 Maty.ajout(iglob1, iglob2, Klocy[iloc1, iloc2])
 
-def plot_on_mesh_function(func, mesh, ordre):
+def plot_on_mesh_function(func, mesh, ordre, flag_maillage=True):
 # def plot_on_mesh_DG_cellwise(func, triangles, points, ordre, loctoglob_DG, dof_coords):
     """
     Affiche une fonction DG en créant des sous-triangles avec les DDL.
@@ -412,6 +412,8 @@ def plot_on_mesh_function(func, mesh, ordre):
     # Figure 1 : Sans maillage
     fig1, ax1 = plt.subplots(figsize=(10, 8))
     tcf1 = ax1.tripcolor(tri, Z_array, cmap='viridis', shading='gouraud', edgecolors='k', linewidths=0.5)
+    if flag_maillage:
+        ax1.triplot(points[:, 0], points[:, 1], triangles, 'k-', linewidth=1.5, alpha=0.7)
     ax1.set_aspect("equal")
     ax1.set_xlabel("x")
     ax1.set_ylabel("y")
@@ -419,19 +421,7 @@ def plot_on_mesh_function(func, mesh, ordre):
     plt.colorbar(tcf1, ax=ax1, label="u")
     plt.show()
     
-    # Figure 2 : Avec maillage
-    fig2, ax2 = plt.subplots(figsize=(10, 8))
-    tcf2 = ax2.tripcolor(tri, Z_array, cmap='viridis', shading='gouraud', edgecolors='k', linewidths=0.5)
-    ax2.triplot(points[:, 0], points[:, 1], triangles, 'k-', linewidth=1.5, alpha=0.7)
-    ax2.set_aspect("equal")
-    ax2.set_xlabel("x")
-    ax2.set_ylabel("y")
-    ax2.set_title("DG : représentation P1 (avec maillage)")
-    plt.colorbar(tcf2, ax=ax2, label="u")
-    plt.show()
-
-#def plot_nodal_vector_DG(U, triangles, points, ordre, loctoglob_DG, dof_coords, title=""):
-def plot_nodal_vector_DG(U, mesh, ordre, title):
+def plot_nodal_vector_DG(U, mesh, ordre, title,flag_maillage=True):
     """
     Affiche un vecteur nodal DG complexe en créant des sous-triangles avec les DDL.
     Représentation P1 continue sur chaque sous-triangle (tripcolor gouraud).
@@ -507,26 +497,6 @@ def plot_nodal_vector_DG(U, mesh, ordre, title):
         (np.abs(Z_array),  "module", "|u|")
     ]
 
-    # ---------- Figure 1 : Sans maillage (3 frames) ----------
-    fig1, ax1 = plt.subplots(1, 3, figsize=(18, 6))
-
-    for k, (Zk, label_long, cblabel) in enumerate(champs):
-        tcf1 = ax1[k].tripcolor(
-            tri, Zk,
-            cmap='viridis',
-            shading='gouraud',
-            edgecolors='k',
-            linewidths=0.5
-        )
-        ax1[k].set_aspect("equal")
-        ax1[k].set_xlabel("x")
-        ax1[k].set_ylabel("y")
-        ax1[k].set_title(f"DG : {title} ({label_long}) — sans maillage" if title
-                         else f"DG : représentation P1 ({label_long}) — sans maillage")
-        plt.colorbar(tcf1, ax=ax1[k], label=cblabel)
-
-    plt.tight_layout()
-    plt.show()
 
     # ---------- Figure 2 : Avec maillage (3 frames) ----------
     fig2, ax2 = plt.subplots(1, 3, figsize=(18, 6))
@@ -539,7 +509,8 @@ def plot_nodal_vector_DG(U, mesh, ordre, title):
             edgecolors='k',
             linewidths=0.5
         )
-        ax2[k].triplot(points[:, 0], points[:, 1], triangles, 'k-',
+        if flag_maillage:
+            ax2[k].triplot(points[:, 0], points[:, 1], triangles, 'k-',
                        linewidth=1, alpha=0.4)
         ax2[k].set_aspect("equal")
         ax2[k].set_xlabel("x")
@@ -551,7 +522,7 @@ def plot_nodal_vector_DG(U, mesh, ordre, title):
     plt.tight_layout()
     plt.show()
 
-    return fig1, ax1, fig2, ax2
+    return fig2, ax2
 
 def iface_iglob(ielt, iface, iloc_face, ordre, loctoglob_DG):
     """

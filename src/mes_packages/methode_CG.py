@@ -537,25 +537,17 @@ def termes_source_frontiere_CG(func,mesh, ordre:int):
 
     return F_boundary_CG
 
-def plot_nodal_vector_CG(U_CG, mesh, ordre:int, title):
+def plot_nodal_vector_CG(U_CG, mesh, ordre:int, title:str, flag_maillage=True):
     """
     Visualise un vecteur nodal C0 en le convertissant en DG, puis en appelant
     la routine de tracé DG.
     """
     U_CG = U_CG.flatten()
     # DDL locaux et géométrie du maillage
-    Nloc = (ordre + 1) * (ordre + 2) // 2
-    points = mesh.points[:, :2]
-    triangles = np.asarray(mesh.cells_dict["triangle"])
-    # Tables de correspondance C0 et DG
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
-    loc_to_glob_CG, glob_to_xy, Nglob_CG = build_loctoglob_CG(mesh, ordre)
-    # Coordonnées DG des DDL pour l'affichage
-    dof_coords = build_dof_coordinates_DG(mesh, ordre)
     # Conversion C0 -> DG, puis tracé DG
     U_DG = nodal_CG_to_DG(U_CG, mesh, ordre)
-    plot_nodal_vector_DG(U_DG, mesh, ordre, title)
-
+    plot_nodal_vector_DG(U_DG, mesh, ordre, title, flag_maillage)
+    
 def plot_support_terme_source(F_CG, mesh, ordre:int):
     # DDL locaux et géométrie du maillage
     points = mesh.points[:, :2]
