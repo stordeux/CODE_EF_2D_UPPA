@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from numpy.polynomial.legendre import leggauss
 from mes_packages import (
     loc2D_to_loc1D, 
+    Mref,
     build_masse_locale, 
     build_mixte_locale,
     build_rigidite_locale,
@@ -216,13 +217,16 @@ def build_masse_CG(mesh, ordre:int, verbose=True):
     nnz_estime = n_triangles * Nloc * Nloc
     M_CG = COOMatrix(Nglob_CG, Nglob_CG, nnz_estime)
     
+    Mhat = Mref(ordre)
+
     for ielt in range(n_triangles):
         A1 = points[triangles[ielt, 0]]
         A2 = points[triangles[ielt, 1]]
-        A3 = points[triangles[ielt, 2]]
-        
-        Mloc = build_masse_locale(ordre, A1, A2, A3)
-        
+        A3 = points[triangles[ielt, 2]]    
+        # Calcul de l'aire du triangle physique
+        Jac = abs((A2[0] - A1[0]) * (A3[1] - A1[1]) - (A3[0] - A1[0]) * (A2[1] - A1[1]))
+        Mloc = Jac * Mhat
+        # Mloc = build_masse_locale(ordre, A1, A2, A3)
         for iloc1 in range(ordre + 1):
             for jloc1 in range(ordre + 1 - iloc1):
                 i_local = loc2D_to_loc1D(iloc1, jloc1)

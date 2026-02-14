@@ -19,6 +19,13 @@ class COOMatrix:
         self.cols[self.l] = j
         self.data[self.l] = np.complex128(val)
         self.l=self.l+1
+    def ajout_rapide(self,row,col,nnz_val,val):
+        if self.l + nnz_val > self.nnz:
+            raise ValueError("Nombre d'éléments non nuls dépassé")
+        self.rows[self.l:self.l+nnz_val] = row
+        self.cols[self.l:self.l+nnz_val] = col
+        self.data[self.l:self.l+nnz_val] = val
+        self.l += nnz_val
     def print(self):
         print('nb lignes',self.nb_lig)
         print('nb colonnes',self.nb_col)
