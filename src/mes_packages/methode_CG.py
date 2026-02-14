@@ -14,7 +14,8 @@ from mes_packages import (
     plot_nodal_vector_DG,
     build_loctoglob_DG,
     scatter_nodal_vector_DG,
-    calcul_normale
+    calcul_normale,
+    Kref
     )
 from mes_packages.sparse import COOMatrix
 
@@ -306,13 +307,19 @@ def build_rigidite_CG(mesh, ordre:int, verbose=True):
     # Estimation du nombre d'éléments non nuls
     nnz_estime = 20 * Nglob_CG * Nloc
     K_CG = COOMatrix(Nglob_CG, Nglob_CG, nnz_estime)
-
+    # Matrices de référence
+    Krefxx, Krefxy, Krefyx, Krefyy = Kref(ordre)
     for ielt in range(n_triangles):
         A1 = points[triangles[ielt, 0]]
         A2 = points[triangles[ielt, 1]]
         A3 = points[triangles[ielt, 2]]
-        
-        Kloc = build_rigidite_locale(ordre, A1, A2, A3, equation='laplace')
+        J=np.column_stack((A2 - A1, A3 - A1))
+        detJ = abs(np.linalg.det(J))
+        J_inv = np.linalg.inv(J)
+        Klocxx = detJ * (J_inv[0, 0]**2 * Krefxx + J_inv[0, 0]*J_inv[1, 0]*(Krefxy + Krefyx) + J_inv[1, 0]**2 * Krefyy)
+        Klocyy = detJ * (J_inv[0, 1]**2 * Krefxx + J_inv[0, 1]*J_inv[1, 1]*(Krefxy + Krefyx) + J_inv[1, 1]**2 * Krefyy)
+        Kloc = Klocxx + Klocyy
+        # Kloc = build_rigidite_locale(ordre, A1, A2, A3, equation='laplace')
         
         for iloc1 in range(ordre + 1):
             for jloc1 in range(ordre + 1 - iloc1):
