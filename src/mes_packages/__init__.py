@@ -34,7 +34,7 @@ from .methode_DG import (
     build_nodal_vector_DG,
     scatter_nodal_vector_DG,
     build_masse_DG,
-    build_mixte_globale_DG,
+    build_mixte_DG,
     plot_on_mesh_function,
     plot_nodal_vector_DG,
     plot_face_to_glob,
@@ -48,7 +48,8 @@ from .methode_DG import (
     nombre_dof_DG,
     build_jump_matrix_DG,
     terme_source_DG,
-    build_masse_variable_DG
+    build_masse_variable_DG,
+    build_mixte_variable_DG
     )
 from .methode_CG import (
     build_loctoglob_CG,
@@ -117,7 +118,7 @@ __all__ = [
     "build_nodal_vector_DG",
     "scatter_nodal_vector_DG",
     "build_masse_DG",
-    "build_mixte_globale_DG",
+    "build_mixte_DG",
     "build_loctoglob_CG",
     "nodal_CG_to_DG",
     "plot_on_mesh_function",
@@ -159,6 +160,7 @@ __all__ = [
     "eval_CG_with_grid",
     "eval_CG_point",
     "terme_source_DG",
-    "build_masse_variable_DG"
+    "build_masse_variable_DG",
+    "build_mixte_variable_DG"
     ]
 __version__ = "0.0.1"

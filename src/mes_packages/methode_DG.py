@@ -8,7 +8,7 @@ from mes_packages import (
     build_rigidite_locale,
     build_masse_ref_1D,
     build_neighborhood_structure,
-    base,
+    base,derivative_base,
     COOMatrix)
 from mes_packages.matrice_reference import Mref
 from mes_packages.quadrature import quadrature_triangle_ref_2D
@@ -313,7 +313,7 @@ def build_masse_DG(mesh, ordre):
     return Mat
 
 
-def build_mixte_globale_DG(mesh, ordre, Matx, Maty):
+def build_mixte_DG(mesh, ordre):
     """
     Construit les matrices mixtes globales Kx et Ky en méthode DG
     
@@ -331,8 +331,13 @@ def build_mixte_globale_DG(mesh, ordre, Matx, Maty):
     points = mesh.points[:, :2]
     triangles = mesh.cells_dict["triangle"]
     
+    
     n_triangles = len(triangles)
     Nloc = (ordre + 1) * (ordre + 2) // 2
+    Nglob = Nloc * n_triangles
+    
+    Matx = COOMatrix(Nglob, Nglob, Nloc*Nglob)
+    Maty = COOMatrix(Nglob, Nglob, Nloc*Nglob)
     
     for ielt in range(n_triangles):
         A1 = points[triangles[ielt, 0]]
@@ -349,6 +354,7 @@ def build_mixte_globale_DG(mesh, ordre, Matx, Maty):
                 iglob2 = Nloc * ielt + iloc2
                 Matx.ajout(iglob1, iglob2, Klocx[iloc1, iloc2])
                 Maty.ajout(iglob1, iglob2, Klocy[iloc1, iloc2])
+    return Matx, Maty
 
 def plot_on_mesh_function(func, mesh, ordre, flag_maillage=True):
 # def plot_on_mesh_DG_cellwise(func, triangles, points, ordre, loctoglob_DG, dof_coords):
@@ -1411,4 +1417,97 @@ def build_masse_variable_DG(mass_func, mesh, ordre: int):
                 Mat.ajout(ig, offset + j, Mloc[i, j])
 
     return Mat
+
+
+def build_mixte_variable_DG(rho_func, mesh, ordre):
+    """
+    Construit les deux matrices mixtes DG :
+
+        Ax_ij = ∫ rho(x,y) (∂φ_j/∂x) φ_i
+        Ay_ij = ∫ rho(x,y) (∂φ_j/∂y) φ_i
+
+    Returns
+    -------
+    Matx, Maty : COOMatrix
+    """
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    NT = len(triangles)
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+    Ndof = NT * Nloc
+
+    Matx = COOMatrix(Ndof, Ndof, NT * Nloc * Nloc)
+    Maty = COOMatrix(Ndof, Ndof, NT * Nloc * Nloc)
+
+    # ----------------------------------------------------------
+    # Quadrature (UNE seule fois)
+    # ----------------------------------------------------------
+    ordreq = 2 * ordre
+    wq, xq, yq = quadrature_triangle_ref_2D(ordreq + 1)
+    Nq = len(wq)
+
+    # ----------------------------------------------------------
+    # Pré-évaluation des bases de référence
+    # ----------------------------------------------------------
+    Phi = np.zeros((Nloc, Nq))
+    dPhix_hat = np.zeros((Nloc, Nq))
+    dPhiy_hat = np.zeros((Nloc, Nq))
+
+    for i in range(ordre + 1):
+        for j in range(ordre + 1 - i):
+            k = loc2D_to_loc1D(i, j)
+
+            Phi[k, :] = base(xq, yq, i, j, ordre)
+
+            # dérivées sur le triangle de référence
+            dPhix_hat[k, :] = derivative_base(xq, yq, m=i, n=j, ordre=ordre, var='x')
+            dPhiy_hat[k, :] = derivative_base(xq, yq, m=i, n=j, ordre=ordre, var='y')
+
+    # ==========================================================
+    # Boucle éléments DG
+    # ==========================================================
+    for T, (pt0, pt1, pt2) in enumerate(triangles):
+
+        A0 = points[pt0]
+        A1 = points[pt1]
+        A2 = points[pt2]
+
+        # Jacobien affine
+        J = np.column_stack((A1 - A0, A2 - A0))
+        detJ = abs(np.linalg.det(J))
+        JinvT = np.linalg.inv(J).T
+
+        # transformation des points de quadrature
+        x_phys = A0[0] + xq * (A1[0] - A0[0]) + yq * (A2[0] - A0[0])
+        y_phys = A0[1] + xq * (A1[1] - A0[1]) + yq * (A2[1] - A0[1])
+
+        rho_q = rho_func(x_phys, y_phys)
+
+        # ------------------------------------------------------
+        # Gradient physique
+        # ------------------------------------------------------
+        dPhi_dx = JinvT[0, 0] * dPhix_hat + JinvT[0, 1] * dPhiy_hat
+        dPhi_dy = JinvT[1, 0] * dPhix_hat + JinvT[1, 1] * dPhiy_hat
+
+        # poids pondérés
+        W = wq * rho_q
+
+        # ------------------------------------------------------
+        # Matrices locales
+        # ------------------------------------------------------
+        Ax_loc = detJ * ((Phi * W) @ dPhi_dx.T)
+        Ay_loc = detJ * ((Phi * W) @ dPhi_dy.T)
+
+        # insertion bloc DG
+        offset = T * Nloc
+        for i in range(Nloc):
+            ig = offset + i
+            for j in range(Nloc):
+                jg = offset + j
+                Matx.ajout(ig, jg, Ax_loc[i, j])
+                Maty.ajout(ig, jg, Ay_loc[i, j])
+
+    return Matx, Maty
 

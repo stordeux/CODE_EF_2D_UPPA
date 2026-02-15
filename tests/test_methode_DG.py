@@ -1,9 +1,10 @@
 from mes_packages import *
 import numpy as np
 from scipy.sparse.linalg import eigs
+import pytest
 
 
-from mes_packages.methode_DG import build_dof_coordinates_DG, build_jump_matrix_DG, build_masse_frontiere_elt_DG, build_masse_DG, build_mixte_globale_DG, build_nodal_vector_DG
+from mes_packages.methode_DG import build_dof_coordinates_DG, build_jump_matrix_DG, build_masse_frontiere_elt_DG, build_masse_DG, build_mixte_DG, build_nodal_vector_DG
 from mes_packages.sparse import COOMatrix
 from mes_packages import (
     build_masse_ref_1D, 
@@ -96,11 +97,8 @@ def test_build_masse_mixte_globale_DG():
     assert np.isclose(masse_globale_DG.sesquilinear_form(U_y, U_x),masse_globale_DG.sesquilinear_form(U_xy,U_const))
     assert masse_globale_DG.is_symmetric(), "La matrice de masse globale doit etre symetrique"                  
 
-    # Déclaration des matrices sparses pour Kx et Ky
-    Kx_globale = COOMatrix(Nglob, Nglob, 20*Nloc*Nglob)
-    Ky_globale = COOMatrix(Nglob, Nglob, 20*Nloc*Nglob)
     # Construction des matrices
-    build_mixte_globale_DG(mesh, ordre, Kx_globale, Ky_globale)
+    Kx_globale, Ky_globale = build_mixte_DG(mesh, ordre)
  
     tol = 1e-3
 
@@ -309,3 +307,51 @@ def test_masse_variable_DG():
     val_var = M_var_DG.sesquilinear_form(Vx, Vy)
     val = M_DG.sesquilinear_form(Vx2y2, Vxy)
     assert np.isclose(val_var, val, atol=1e-11), "DG: incohérence masse variable / masse standard pour w=x et v=y"
+
+@pytest.mark.parametrize("ordre", [4,5])
+def test_mixte_xy_DG(ordre):
+
+    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
+
+    # coefficient variable
+    rho = lambda x, y: x**2 + y**2
+
+    # fonctions tests
+    f1  = lambda x, y: 1.0
+    fx  = lambda x, y: x
+    fy  = lambda x, y: y
+    fxy = lambda x, y: x*y
+    fx2 = lambda x, y: x**2
+    fy2 = lambda x, y: y**2
+
+    funs = [f1, fx, fy, fxy, fx2, fy2]
+
+    # matrices
+    Kxvar, Kyvar = build_mixte_variable_DG(rho, mesh, ordre)
+    Kx, Ky       = build_mixte_DG(mesh, ordre)
+
+    # vecteur rho interpolé
+    Urho = build_nodal_vector_DG(rho, mesh, ordre)
+
+    for fu in funs:
+        U = build_nodal_vector_DG(fu, mesh, ordre)
+
+        for fv in funs:
+            V = build_nodal_vector_DG(fv, mesh, ordre)
+
+            Vrho = build_nodal_vector_DG(lambda x,y: rho(x,y)*fv(x,y), mesh, ordre)
+
+            # --- direction x ---
+            val_var = Kxvar.sesquilinear_form(V, U)
+            val_ref = Kx.sesquilinear_form(Vrho, U)
+
+            assert np.isclose(val_var, val_ref, atol=1e-10), \
+                f"Mismatch in x-direction for u={fu.__name__ if hasattr(fu,'__name__') else fu}, v={fv.__name__ if hasattr(fv,'__name__') else fv}"
+
+            # --- direction y ---
+            val_var = Kyvar.sesquilinear_form(V, U)
+            val_ref = Ky.sesquilinear_form(Vrho, U)
+
+            assert np.isclose(val_var, val_ref, atol=1e-10), \
+                f"Mismatch in y-direction for u={fu.__name__ if hasattr(fu,'__name__') else fu}, v={fv}"
+
