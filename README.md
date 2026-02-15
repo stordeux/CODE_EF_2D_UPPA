@@ -114,7 +114,7 @@ REPOSITORY STRUCTURE
     ├── README.md               # Project documentation
     ├── LICENSE                 # License file
     │
-    ├── src/                    # Source code (recommended "src layout")
+    ├── src/                    # Source layout (import isolation)
     │   └── mes_packages/       # Finite element library
     │       ├── __init__.py
     │       ├── base.py
@@ -128,10 +128,20 @@ REPOSITORY STRUCTURE
     │       └── sparse.py
     │
     ├── tests/                  # Unit tests (pytest)
+    │   ├── test_base.py
+    │   ├── test_calcul_symbolique.py
+    │   ├── test_matrice_reference.py
+    │   ├── test_mesh.py
+    │   ├── test_methode_CG.py
+    │   ├── test_methode_DG.py
+    │   ├── test_quadrature.py
+    │   └── test_sparse.py
     │
     ├── examples/               # Minimal usage scripts
     │
-    └── notebooks/              # Teaching / research notebooks
+    ├── notebooks/              # Teaching / research notebooks
+    │
+    └── .gitignore              # Ignored files (venv, cache, build, etc.)
 
 
 ---
