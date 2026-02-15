@@ -8,8 +8,10 @@ from mes_packages import (
     build_rigidite_locale,
     build_masse_ref_1D,
     build_neighborhood_structure,
+    base,
     COOMatrix)
-
+from mes_packages.matrice_reference import Mref
+from mes_packages.quadrature import quadrature_triangle_ref_2D
 
 def build_loctoglob_DG(triangles, ordre):
     """
@@ -270,7 +272,7 @@ def scatter_nodal_vector_DG(U, mesh,ordre,
     return fig, axes
 
 # Assemblage de la matrice de masse globale
-def build_masse_globale_DG(mesh, ordre,Mat):
+def build_masse_DG(mesh, ordre):
     """
     Construit la matrice de masse globale en méthode DG
     
@@ -293,20 +295,22 @@ def build_masse_globale_DG(mesh, ordre,Mat):
     Nloc = (ordre + 1) * (ordre + 2) // 2
     n_dof = Nloc * n_triangles
     
-    Mglob = np.zeros((n_dof, n_dof))
+    Mat = COOMatrix(n_dof, n_dof,n_dof*Nloc)  # Estimation du nombre de non-zéros (peut être ajustée)
     
+    Mhat = Mref(ordre)
     for ielt in range(n_triangles):
         A1 = points[triangles[ielt, 0]]
         A2 = points[triangles[ielt, 1]]
         A3 = points[triangles[ielt, 2]]
-        
-        Mloc = build_masse_locale(ordre, A1, A2, A3)
-        
+        Jac = abs((A2[0] - A1[0]) * (A3[1] - A1[1]) - (A3[0] - A1[0]) * (A2[1] - A1[1]))        
+        Mloc = Jac * Mhat
         for iloc1 in range(Nloc):
             iglob1 = Nloc * ielt + iloc1
             for iloc2 in range(Nloc):
                 iglob2 = Nloc * ielt + iloc2
                 Mat.ajout(iglob1, iglob2, Mloc[iloc1, iloc2])
+
+    return Mat
 
 
 def build_mixte_globale_DG(mesh, ordre, Matx, Maty):
@@ -1270,3 +1274,70 @@ def build_jump_matrix_DG(mesh,ordre:int, verbose=False):
         print("\nAssemblage de la matrice de saut globale terminé")
     
     return MAT_saut
+
+def terme_source_DG(func, mesh, ordre: int):
+    """
+    Construit le terme source en méthode DG :
+        F_i = ∫_T f(x,y) φ_i(x,y) dx
+    (aucun couplage entre éléments)
+
+    Parameters
+    ----------
+    func : callable
+        f(x,y)
+    mesh : meshio.Mesh
+    ordre : int
+
+    Returns
+    -------
+    F_DG : ndarray (Nglob_DG,)
+    """
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    NT = len(triangles)
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+    Nglob = NT * Nloc
+
+    F_DG = np.zeros(Nglob, dtype=np.complex128)
+
+    # --- quadrature (UNE seule fois) ---
+    ordreq = 2 * ordre
+    wq, xq, yq = quadrature_triangle_ref_2D(ordreq + 1)
+    Nq = len(wq)
+
+    # --- pré-évaluation des bases ---
+    Phi = np.zeros((Nloc, Nq))
+    for i in range(ordre + 1):
+        for j in range(ordre + 1 - i):
+            k = loc2D_to_loc1D(i, j)
+            Phi[k, :] = base(xq, yq, i, j, ordre)
+
+    # ==========================================================
+    # Boucle éléments (aucun assemblage = écriture directe)
+    # ==========================================================
+
+    for T, (pt0, pt1, pt2) in enumerate(triangles):
+
+        A0 = points[pt0]
+        A1 = points[pt1]
+        A2 = points[pt2]
+
+        # transformation affine
+        x_phys = A0[0] + xq * (A1[0] - A0[0]) + yq * (A2[0] - A0[0])
+        y_phys = A0[1] + xq * (A1[1] - A0[1]) + yq * (A2[1] - A0[1])
+
+        f_q = func(x_phys, y_phys)
+
+        # jacobien
+        Jac = abs((A1[0]-A0[0])*(A2[1]-A0[1]) - (A2[0]-A0[0])*(A1[1]-A0[1]))
+
+        # intégrale locale vectorisée
+        F_loc = Jac * (Phi @ (wq * f_q))
+
+        # écriture directe DG (aucun scatter)
+        offset = T * Nloc
+        F_DG[offset:offset + Nloc] = F_loc
+
+    return F_DG

@@ -33,7 +33,7 @@ from .methode_DG import (
     plot_un_triangle,
     build_nodal_vector_DG,
     scatter_nodal_vector_DG,
-    build_masse_globale_DG,
+    build_masse_DG,
     build_mixte_globale_DG,
     plot_on_mesh_function,
     plot_nodal_vector_DG,
@@ -46,7 +46,8 @@ from .methode_DG import (
     build_matrice_masse_frontière_DG,
     plot_nodal_vector_moins_fonction_DG,
     nombre_dof_DG,
-    build_jump_matrix_DG
+    build_jump_matrix_DG,
+    terme_source_DG
     )
 from .methode_CG import (
     build_loctoglob_CG,
@@ -114,7 +115,7 @@ __all__ = [
     "plot_un_triangle",
     "build_nodal_vector_DG",
     "scatter_nodal_vector_DG",
-    "build_masse_globale_DG",
+    "build_masse_DG",
     "build_mixte_globale_DG",
     "build_loctoglob_CG",
     "nodal_CG_to_DG",
@@ -155,5 +156,7 @@ __all__ = [
     "build_spatial_grid",
     "candidate_triangles",
     "eval_CG_with_grid",
-    "eval_CG_point"]
+    "eval_CG_point",
+    "terme_source_DG"
+    ]
 __version__ = "0.0.1"

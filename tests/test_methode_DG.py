@@ -1,9 +1,9 @@
-from mes_packages import build_loctoglob_DG, mesh, print_loctoglob_DG,create_mesh_circle_in_square
+from mes_packages import *
 import numpy as np
 from scipy.sparse.linalg import eigs
 
 
-from mes_packages.methode_DG import build_dof_coordinates_DG, build_jump_matrix_DG, build_masse_frontiere_elt_DG, build_masse_globale_DG, build_masse_globale_DG, build_mixte_globale_DG, build_nodal_vector_DG
+from mes_packages.methode_DG import build_dof_coordinates_DG, build_jump_matrix_DG, build_masse_frontiere_elt_DG, build_masse_DG, build_mixte_globale_DG, build_nodal_vector_DG
 from mes_packages.sparse import COOMatrix
 from mes_packages import (
     build_masse_ref_1D, 
@@ -72,8 +72,7 @@ def test_build_masse_mixte_globale_DG():
     Nloc = (ordre + 1) * (ordre + 2) // 2
     Nglob = Nloc * len(triangles)
     dof_coords_DG=build_dof_coordinates_DG(mesh, ordre)
-    masse_globale=COOMatrix(Nglob,Nglob,20*Nloc*Nglob)    
-    build_masse_globale_DG(mesh, ordre,masse_globale)    
+    masse_globale_DG = build_masse_DG(mesh, ordre)    
     # Construction du vecteur nodal pour f(x,y) = 1
     U_const = build_nodal_vector_DG(lambda x, y: 1.0, mesh, ordre)
     # Construction du vecteur nodal pour f(x,y) = x
@@ -84,18 +83,18 @@ def test_build_masse_mixte_globale_DG():
     U_xy = build_nodal_vector_DG(lambda x, y: x*y, mesh, ordre)
     # Aire analytique du domaine (carre - disque)
     aire_analytique = 0.3**2 - np.pi * 0.1**2
-    aire_numerique = masse_globale.sesquilinear_form(U_const, U_const)
+    aire_numerique = masse_globale_DG.sesquilinear_form(U_const, U_const)
     assert abs(aire_numerique - aire_analytique) < 1e-3, "Aire numerique incorrecte"
 
     # Centre de gravite (symetrie -> integrales de x et y nulles)
-    cx = masse_globale.sesquilinear_form(U_x, U_const)
-    cy = masse_globale.sesquilinear_form(U_y, U_const)
+    cx = masse_globale_DG.sesquilinear_form(U_x, U_const)
+    cy = masse_globale_DG.sesquilinear_form(U_y, U_const)
     assert abs(cx) < 1e-3, "Centre de gravite en x incorrect"
     assert abs(cy) < 1e-3, "Centre de gravite en y incorrect"
-    cxy = masse_globale.sesquilinear_form(U_y, U_x)
+    cxy = masse_globale_DG.sesquilinear_form(U_y, U_x)
     assert abs(cxy) < 1e-3, "Centre de gravite en xy incorrect"
-    assert np.isclose(masse_globale.sesquilinear_form(U_y, U_x),masse_globale.sesquilinear_form(U_xy,U_const))
-    assert masse_globale.is_symmetric(), "La matrice de masse globale doit etre symetrique"                  
+    assert np.isclose(masse_globale_DG.sesquilinear_form(U_y, U_x),masse_globale_DG.sesquilinear_form(U_xy,U_const))
+    assert masse_globale_DG.is_symmetric(), "La matrice de masse globale doit etre symetrique"                  
 
     # Déclaration des matrices sparses pour Kx et Ky
     Kx_globale = COOMatrix(Nglob, Nglob, 20*Nloc*Nglob)
@@ -144,11 +143,11 @@ def test_build_masse_mixte_globale_DG():
     assert abs(ky_xyy) < tol, "Ky(xy,y) doit etre proche de 0"
     f_x2 = lambda x, y: x**2
     U_x2 = build_nodal_vector_DG(f_x2, mesh, ordre)
-    TEST= np.isclose(Kx_globale.sesquilinear_form(U_x2, U_x),masse_globale.sesquilinear_form(U_x2, U_const))
+    TEST= np.isclose(Kx_globale.sesquilinear_form(U_x2, U_x),masse_globale_DG.sesquilinear_form(U_x2, U_const))
     assert TEST, "Kx(x^2,x) doit etre proche de M(x^2,1)"
     f_y2 = lambda x, y: y**2
     U_y2 = build_nodal_vector_DG(f_y2, mesh, ordre)
-    TEST= np.isclose(Ky_globale.sesquilinear_form(U_y2, U_y),masse_globale.sesquilinear_form(U_y2, U_const))
+    TEST= np.isclose(Ky_globale.sesquilinear_form(U_y2, U_y),masse_globale_DG.sesquilinear_form(U_y2, U_const))
     assert TEST, "Ky(y^2,y) doit etre proche de M(y^2,1)"
 
 def test_build_masse_frontiere_elt_DG():
@@ -245,3 +244,44 @@ def test_build_jump_matrix_DG():
     assert vp_max_val > 1e-6, f"La plus grande valeur propre en module doit être positive de 0 (vp_max={vp_max})"
     assert np.isclose(vp_min_val,0), f"La plus petite valeur propre en module doit être positive de 0 (vp_min={vp_min})"
     
+
+def test_masse_volumique_DG():
+
+    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
+    ordre = 4
+
+    # --- matrice de masse DG (nouvelle version optimisée) ---
+    M_DG = build_masse_DG(mesh, ordre)
+
+    # --- fonctions tests (polynômes => intégration exacte attendue) ---
+    func = lambda x, y: x**2 + y**2
+    f_1  = lambda x, y: 1.0
+    f_x  = lambda x, y: x
+    f_y  = lambda x, y: y
+
+    # --- vecteurs nodaux DG ---
+    V   = build_nodal_vector_DG(func, mesh, ordre)
+    V_1 = build_nodal_vector_DG(f_1, mesh, ordre)
+    V_x = build_nodal_vector_DG(f_x, mesh, ordre)
+    V_y = build_nodal_vector_DG(f_y, mesh, ordre)
+
+    # --- produit faible via la masse ---
+    val_1 = M_DG.sesquilinear_form(V, V_1)
+    val_x = M_DG.sesquilinear_form(V, V_x)
+    val_y = M_DG.sesquilinear_form(V, V_y)
+
+    # --- calcul direct avec le terme source DG ---
+    F_vol = terme_source_DG(func, mesh, ordre)
+
+    val_1_bis = np.vdot(F_vol, V_1)
+    val_x_bis = np.vdot(F_vol, V_x)
+    val_y_bis = np.vdot(F_vol, V_y)
+
+    assert np.isclose(val_1, val_1_bis, atol=1e-10), \
+        "DG: incohérence masse / terme source pour w=1"
+
+    assert np.isclose(val_x, val_x_bis, atol=1e-10), \
+        "DG: incohérence masse / terme source pour w=x"
+
+    assert np.isclose(val_y, val_y_bis, atol=1e-10), \
+        "DG: incohérence masse / terme source pour w=y"

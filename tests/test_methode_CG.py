@@ -156,7 +156,7 @@ def test_non_trivial():
     dnF0bis = K_CG@U_f_CG + M_CG@U_g_CG
     assert np.linalg.norm(dnF0 - dnF0bis) < 1e-6, "Le terme source doit être égal à Kf + Mg"
 
-def test_termes_source_volumique():
+def test_termes_source_volumique_CG():
     mesh = create_mesh_circle_in_square(0.1, 0.3,0.05)
     ordre = 4
     M_CG = build_masse_CG(mesh, ordre, verbose=False)
@@ -192,4 +192,3 @@ def test_norme_L2_CG():
     assert np.isclose(norme_L2_1, norme_L2_2, atol=1e-6), "La norme L2 doit être égale à sqrt(M@V·V)"
     norme_L2_0 =erreur_L2_CG(V, func, mesh, ordre)
     assert np.isclose(norme_L2_0, 0, atol=1e-6), "L'erreur L2 doit être proche de 0 lorsque la fonction est exactement représentée"
-    
