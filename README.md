@@ -127,11 +127,11 @@ DEVELOPMENT WORKFLOW
 
 A taper dans un powershell
 
-git pull # récupérer dernières modifications
-git status # voir les fichiers modifiés
-git add . # ajouter les modifications
-git commit -m "message" # enregistrer les changements
-git push && git pushall # envoyer vers GitHub (+ GitLab optionnel)
+    git pull # récupérer dernières modifications
+    git status # voir les fichiers modifiés
+    git add . # ajouter les modifications
+    git commit -m "message" # enregistrer les changements
+    git push && git pushall # envoyer vers GitHub (+ GitLab optionnel)
 
 ---
 
