@@ -1341,3 +1341,74 @@ def terme_source_DG(func, mesh, ordre: int):
         F_DG[offset:offset + Nloc] = F_loc
 
     return F_DG
+
+def build_masse_variable_DG(mass_func, mesh, ordre: int):
+    """
+    Matrice de masse DG avec coefficient variable m(x,y)
+
+        M_ij = ∫_T m(x,y) φ_i φ_j dx
+
+    Parameters
+    ----------
+    mass_func : callable
+        m(x,y)
+    mesh : meshio.Mesh
+    ordre : int
+
+    Returns
+    -------
+    Mat : COOMatrix
+    """
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    NT = len(triangles)
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+    Ndof = NT * Nloc
+
+    Mat = COOMatrix(Ndof, Ndof, NT * Nloc * Nloc)
+
+    # --- quadrature (UNE seule fois) ---
+    ordreq = 2 * ordre
+    wq, xq, yq = quadrature_triangle_ref_2D(ordreq + 1)
+    Nq = len(wq)
+
+    # --- pré-évaluation des bases ---
+    Phi = np.zeros((Nloc, Nq))
+    for i in range(ordre + 1):
+        for j in range(ordre + 1 - i):
+            k = loc2D_to_loc1D(i, j)
+            Phi[k, :] = base(xq, yq, i, j, ordre)
+
+    # ==========================================================
+    # Boucle éléments DG (bloc locaux indépendants)
+    # ==========================================================
+
+    for T, (pt0, pt1, pt2) in enumerate(triangles):
+
+        A0 = points[pt0]
+        A1 = points[pt1]
+        A2 = points[pt2]
+
+        # transformation affine
+        x_phys = A0[0] + xq * (A1[0] - A0[0]) + yq * (A2[0] - A0[0])
+        y_phys = A0[1] + xq * (A1[1] - A0[1]) + yq * (A2[1] - A0[1])
+
+        m_q = mass_func(x_phys, y_phys)
+
+        Jac = abs((A1[0]-A0[0])*(A2[1]-A0[1]) - (A2[0]-A0[0])*(A1[1]-A0[1]))
+
+        # --- masse locale variable ---
+        # Mloc = ∫ m φ_i φ_j
+        Wm = wq * m_q
+        Mloc = Jac * ((Phi * Wm) @ Phi.T)
+
+        offset = T * Nloc
+        for i in range(Nloc):
+            ig = offset + i
+            for j in range(Nloc):
+                Mat.ajout(ig, offset + j, Mloc[i, j])
+
+    return Mat
+

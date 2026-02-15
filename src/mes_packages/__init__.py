@@ -47,7 +47,8 @@ from .methode_DG import (
     plot_nodal_vector_moins_fonction_DG,
     nombre_dof_DG,
     build_jump_matrix_DG,
-    terme_source_DG
+    terme_source_DG,
+    build_masse_variable_DG
     )
 from .methode_CG import (
     build_loctoglob_CG,
@@ -157,6 +158,7 @@ __all__ = [
     "candidate_triangles",
     "eval_CG_with_grid",
     "eval_CG_point",
-    "terme_source_DG"
+    "terme_source_DG",
+    "build_masse_variable_DG"
     ]
 __version__ = "0.0.1"

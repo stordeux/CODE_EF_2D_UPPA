@@ -285,3 +285,27 @@ def test_masse_volumique_DG():
 
     assert np.isclose(val_y, val_y_bis, atol=1e-10), \
         "DG: incohérence masse / terme source pour w=y"
+    
+
+def test_masse_variable_DG():
+    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
+    ordre = 4
+    func = lambda x, y: x**2 + y**2
+    fx = lambda x, y: x
+    fy = lambda x, y: y
+    fxy = lambda x, y: x*y
+
+    # --- matrice de masse variable DG ---
+    M_var_DG = build_masse_variable_DG(func,mesh, ordre)
+    M_DG = build_masse_DG(mesh, ordre)
+    # --- fonctions tests (polynômes => intégration exacte attendue) ---
+
+    # --- vecteurs nodaux DG ---
+    Vx   = build_nodal_vector_DG(fx,  mesh, ordre)
+    Vxy  = build_nodal_vector_DG(fxy, mesh, ordre)
+    Vy   = build_nodal_vector_DG(fy,  mesh, ordre)
+    Vx2y2   = build_nodal_vector_DG(func, mesh, ordre)
+    # --- produit faible via la masse variable ---
+    val_var = M_var_DG.sesquilinear_form(Vx, Vy)
+    val = M_DG.sesquilinear_form(Vx2y2, Vxy)
+    assert np.isclose(val_var, val, atol=1e-11), "DG: incohérence masse variable / masse standard pour w=x et v=y"
