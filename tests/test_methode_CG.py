@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sp
 from mes_packages import create_mesh_circle_in_square
-from mes_packages import build_masse_CG, build_rigidite_CG, build_nodal_vector_CG,build_masse_frontiere_CG, termes_source_frontiere_CG, termes_source_frontiere_gradn_CG
+from mes_packages import build_masse_CG, build_rigidite_CG, build_nodal_vector_CG,build_masse_frontiere_CG, termes_source_frontiere_CG, termes_source_frontiere_gradn_CG, terme_source_CG
 from mes_packages.calcul_symbolique import build_f_and_grads
 
 
@@ -155,5 +155,31 @@ def test_non_trivial():
     U_g_CG  = build_nodal_vector_CG(g, mesh,ordre) 
     dnF0bis = K_CG@U_f_CG + M_CG@U_g_CG
     assert np.linalg.norm(dnF0 - dnF0bis) < 1e-6, "Le terme source doit être égal à Kf + Mg"
+
+def test_termes_source_volumique():
+    mesh = create_mesh_circle_in_square(0.1, 0.3,0.05)
+    ordre = 4
+    M_CG = build_masse_CG(mesh, ordre, verbose=False)
+    func = lambda x,y: x**2 + y**2  
+    f_1 = lambda x,y: 1
+    f_x = lambda x,y: x
+    f_y = lambda x,y: y
+    F_vol = terme_source_CG(func, mesh, ordre)
+    V = build_nodal_vector_CG(func, mesh, ordre)
+    V_1 = build_nodal_vector_CG(f_1, mesh, ordre)
+    V_x = build_nodal_vector_CG(f_x, mesh, ordre)
+    V_y = build_nodal_vector_CG(f_y, mesh, ordre)
+    val_1 = M_CG.sesquilinear_form(V, V_1)
+    val_x = M_CG.sesquilinear_form(V, V_x)
+    val_y = M_CG.sesquilinear_form(V, V_y)
+    val_1_bis = np.vdot(F_vol, V_1)
+    val_x_bis = np.vdot(F_vol, V_x)
+    val_y_bis = np.vdot(F_vol, V_y)
+
+    assert np.isclose(val_1, val_1_bis, atol=1e-6), "Le terme source volumique doit être égal à M@V"
+    assert np.isclose(val_x, val_x_bis, atol=1e-6), "Le terme source volumique doit être égal à M@V"
+    assert np.isclose(val_y, val_y_bis, atol=1e-6), "Le terme source volumique doit être égal à M@V"
+
+
     
 

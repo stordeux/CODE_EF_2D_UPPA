@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from numpy.polynomial.legendre import leggauss
 from mes_packages import (
+    base,
     loc2D_to_loc1D, 
     Mref,
     build_masse_locale, 
@@ -18,6 +19,9 @@ from mes_packages import (
     Kref
     )
 from mes_packages.sparse import COOMatrix
+from mes_packages.quadrature import (
+    quadrature_triangle_ref_2D
+    )
 
 
 def build_loctoglob_CG(mesh, ordre:int, tol=1e-10):
@@ -187,6 +191,60 @@ def scatter_nodal_vector_CG(U_CG, mesh, ordre:int, title):
     plt.show()
 
 
+def build_masse_CG_lent(mesh, ordre:int, verbose=True):
+    """
+    Construit la matrice de masse globale en méthode C0 (continue)
+    
+    Parameters:
+    -----------
+    mesh : Mesh
+        Maillage
+    ordre : int
+        Ordre des éléments finis
+    verbose : bool, optional
+        Afficher les statistiques
+        
+    Returns:
+    --------
+    M_CG : COOMatrix
+        Matrice de masse globale CG
+    """
+
+    # Recuperation de la géométrie du maillage
+    points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
+    triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]    
+    loc_to_glob_CG, glob_to_xy_CG, Nglob_CG=build_loctoglob_CG(mesh, ordre)
+    n_triangles = len(triangles)
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+    Nglob_CG = np.max(loc_to_glob_CG) + 1
+    
+    # Estimation du nombre d'éléments non nuls
+    nnz_estime = n_triangles * Nloc * Nloc
+    M_CG = COOMatrix(Nglob_CG, Nglob_CG, nnz_estime)
+    
+    for ielt in range(n_triangles):
+        A1 = points[triangles[ielt, 0]]
+        A2 = points[triangles[ielt, 1]]
+        A3 = points[triangles[ielt, 2]]    
+        Mloc = build_masse_locale(ordre, A1, A2, A3)
+        for iloc1 in range(ordre + 1):
+            for jloc1 in range(ordre + 1 - iloc1):
+                i_local = loc2D_to_loc1D(iloc1, jloc1)
+                iglob = loc_to_glob_CG[ielt, iloc1, jloc1]
+                
+                for iloc2 in range(ordre + 1):
+                    for jloc2 in range(ordre + 1 - iloc2):
+                        j_local = loc2D_to_loc1D(iloc2, jloc2)
+                        jglob = loc_to_glob_CG[ielt, iloc2, jloc2]
+                        
+                        M_CG.ajout(iglob, jglob, Mloc[i_local, j_local])
+    
+    if verbose:
+        print(f"Matrice de masse CG assemblée : {M_CG.nb_lig} x {M_CG.nb_col}")
+        print(f"Éléments non nuls : {M_CG.l}")
+    
+    return M_CG
+
 def build_masse_CG(mesh, ordre:int, verbose=True):
     """
     Construit la matrice de masse globale en méthode C0 (continue)
@@ -247,6 +305,59 @@ def build_masse_CG(mesh, ordre:int, verbose=True):
     return M_CG
 
 
+def terme_source_CG(func, mesh, ordre:int):
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+    loc_to_glob_CG, glob_to_xy_CG, Nglob_CG = build_loctoglob_CG(mesh, ordre)
+
+    F_CG = np.zeros(Nglob_CG, dtype=np.complex128)
+
+    # Quadrature (une seule fois)
+    ordreq = 2*ordre 
+    wq,xq, yq = quadrature_triangle_ref_2D(ordreq+1)
+
+    Nloc = (ordre+1)*(ordre+2)//2
+    Nq = len(wq)
+
+    # Pré-évaluation des bases
+    Phi = np.zeros((Nloc, Nq))
+    k = 0
+    for i in range(ordre+1):
+        for j in range(ordre+1-i):
+            k = loc2D_to_loc1D(i, j)
+            Phi[k,:] = base(xq, yq, i, j, ordre)
+
+    for T, (pt0, pt1, pt2) in enumerate(triangles):
+
+        A0 = points[pt0]
+        A1 = points[pt1]
+        A2 = points[pt2]
+
+        # Transformation affine des points de quad
+        x_phys = A0[0] + xq*(A1[0]-A0[0]) + yq*(A2[0]-A0[0])
+        y_phys = A0[1] + xq*(A1[1]-A0[1]) + yq*(A2[1]-A0[1])
+
+        f_q = func(x_phys, y_phys)
+
+        # Jacobien (une fois)
+        Jac = abs((A1[0]-A0[0])*(A2[1]-A0[1]) - (A2[0]-A0[0])*(A1[1]-A0[1]))
+
+        # Intégrale locale vectorisée
+        F_loc = Jac * (Phi @ (wq * f_q))
+
+        # Assemblage
+        for iloc in range(ordre + 1):
+            for jloc in range(ordre + 1 - iloc):
+                k=loc2D_to_loc1D(iloc, jloc)
+                iglob = loc_to_glob_CG[T,iloc, jloc]
+                F_CG[iglob] += F_loc[k]
+
+    return F_CG
+
+
+
+
 def build_nodal_vector_CG(f, mesh,ordre:int):
     """
     Construit le vecteur nodal associé à une fonction f(x,y)
@@ -277,6 +388,60 @@ def build_nodal_vector_CG(f, mesh,ordre:int):
         U[iglob] = f(x, y)
     
     return U
+
+
+def build_rigidite_CG_lent(mesh, ordre:int, verbose=True):
+    """
+    Construit la matrice de rigidité globale en méthode CG (continue)
+    
+    Parameters:
+    -----------
+    mesh : Mesh
+        Maillage contenant les triangles et les points
+    ordre : int
+        Ordre des éléments finis
+    verbose : bool, optional
+        Afficher les statistiques
+        
+    Returns:
+    --------
+    K_CG : COOMatrix
+        Matrice de rigidité globale CG (Laplacien)
+    """
+    points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
+    triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]    
+    loc_to_glob_CG, glob_to_xy_CG, Nglob_CG=build_loctoglob_CG(mesh, ordre)
+    n_triangles = len(triangles)
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+    Nglob_CG = np.max(loc_to_glob_CG) + 1
+
+    # Estimation du nombre d'éléments non nuls
+    nnz_estime = 20 * Nglob_CG * Nloc
+    K_CG = COOMatrix(Nglob_CG, Nglob_CG, nnz_estime)
+    # Matrices de référence
+    for ielt in range(n_triangles):
+        A1 = points[triangles[ielt, 0]]
+        A2 = points[triangles[ielt, 1]]
+        A3 = points[triangles[ielt, 2]]
+        Kloc = build_rigidite_locale(ordre, A1, A2, A3, equation='laplace')
+        
+        for iloc1 in range(ordre + 1):
+            for jloc1 in range(ordre + 1 - iloc1):
+                i_local = loc2D_to_loc1D(iloc1, jloc1)
+                iglob = loc_to_glob_CG[ielt, iloc1, jloc1]
+                
+                for iloc2 in range(ordre + 1):
+                    for jloc2 in range(ordre + 1 - iloc2):
+                        j_local = loc2D_to_loc1D(iloc2, jloc2)
+                        jglob = loc_to_glob_CG[ielt, iloc2, jloc2]
+                        
+                        K_CG.ajout(iglob, jglob, Kloc[i_local, j_local])
+
+    if verbose:
+        print(f"Matrice de rigidité CG assemblée : {K_CG.nb_lig} x {K_CG.nb_col}")
+        print(f"Éléments non nuls : {K_CG.l}")
+
+    return K_CG
 
 
 def build_rigidite_CG(mesh, ordre:int, verbose=True):

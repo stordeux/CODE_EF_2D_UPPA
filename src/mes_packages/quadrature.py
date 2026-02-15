@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.polynomial.legendre import leggauss
 
 def integrate_segment_2D_old(f, A1, A2, xi, w):
     """
@@ -154,6 +155,40 @@ def integrate_triangle_2D(f, A1, A2, A3, xi, w):
     
     return I
 
+def quadrature_triangle_ref_2D(n):
+    """
+    Quadrature de Duffy basée sur Gauss–Legendre tensoriel.
+
+    Exacte pour les polynômes de degré <= 2*n-2 sur le triangle.
+    """
+
+    xi, w = leggauss(n)
+
+    nq = n * n
+    x = np.empty(nq)
+    y = np.empty(nq)
+    w2 = np.empty(nq)
+
+    l = 0
+    for i in range(n):
+        s = 0.5 * (1 + xi[i])
+        ws = 0.5 * w[i]
+
+        for j in range(n):
+            t = 0.5 * (1 + xi[j])
+            wt = 0.5 * w[j]
+
+            x[l] = s
+            y[l] = (1 - s) * t
+
+            # poids = |J_Duffy| * scaling_GL
+            w2[l] = ws * wt * (1 - s)
+
+            l += 1
+
+    return w2, x, y
+
+
 def integrate_triangle_2D_product(f,g, A1, A2, A3, xi, w):
     """
     Intègre une fonction f(x,y) sur un triangle 2D [A1, A2, A3]
@@ -207,5 +242,6 @@ def integrate_triangle_2D_product(f,g, A1, A2, A3, xi, w):
             I += w[i] * w[j] * f(x, y) * g(x, y) * J
     
     return I
+
 
 

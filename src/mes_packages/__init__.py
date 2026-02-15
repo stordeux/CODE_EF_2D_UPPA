@@ -64,6 +64,7 @@ from .methode_CG import (
     plot_faces_interieur_CG,
     plot_nodal_vector_moins_fonction_CG,
     nombre_DDL_CG_par_DDL_DG,
+    terme_source_CG
     )
 from .methode_hyperbolique import (
     assemble_hyperbo
@@ -143,5 +144,6 @@ __all__ = [
     "nombre_DDL_CG_par_DDL_DG",
     "plot_nodal_vector_moins_fonction_DG",
     "nombre_dof_DG",
-    "build_jump_matrix_DG"]
+    "build_jump_matrix_DG",
+    "terme_source_CG"]
 __version__ = "0.0.1"
