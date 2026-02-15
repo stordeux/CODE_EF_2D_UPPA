@@ -165,4 +165,6 @@ Students must:
 AUTHOR
 
 Sébastien Tordeux
-UPPA — Applied Mathematics
+EPC Makutu, UPPA, INRIA, LMAP UMR CNRS 5142
+
+Do not hesitate to report bug at sebastien.tordeux@univ-pau.fr
