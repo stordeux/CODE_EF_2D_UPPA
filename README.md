@@ -108,53 +108,53 @@ Make sure the Jupyter kernel uses the virtual environment ".venv".
 
 REPOSITORY STRUCTURE
 
-project_root/
-│
-├── pyproject.toml          # Package configuration (PEP 517/518)
-├── README.md               # Project documentation
-├── LICENSE                 # License file
-│
-├── src/                    # Source layout (import isolation)
-│   └── mes_packages/       # Finite element library
-│       ├── __init__.py
-│       ├── base.py
-│       ├── calcul_symbolique.py
-│       ├── matrice_reference.py
-│       ├── mesh.py
-│       ├── methode_CG.py
-│       ├── methode_DG.py
-│       ├── methode_hyperbolique.py
-│       ├── quadrature.py
-│       └── sparse.py
-│
-├── tests/                  # Unit tests (pytest)
-│   ├── test_base.py
-│   ├── test_calcul_symbolique.py
-│   ├── test_matrice_reference.py
-│   ├── test_mesh.py
-│   ├── test_methode_CG.py
-│   ├── test_methode_DG.py
-│   ├── test_quadrature.py
-│   └── test_sparse.py
-│
-├── examples/               # Jupyter notebooks demonstrating usage
-│   ├── exemple_CG.ipynb
-│   ├── exemple_DG.ipynb
-│   ├── exemple_hyperbo.ipynb
-│   ├── exemple_mesh.ipynb
-│   ├── exemple_normale_triange.ipynb
-│   ├── exemple_quadrature.ipynb
-│   ├── exemple_reference.ipynb
-│   ├── exemple_sparse.ipynb
-│   ├── exemple_matrices_locales.ipynb
-│   ├── exemple_matrice_face_dun_triangle_DG.ipynb
-│   ├── exemple_matrice_saut_DG.ipynb
-│   └── exemple.visu.ipynb
-│
-├── notebooks/              # (Optional) teaching notebooks or research drafts
-│
-└── .gitignore              # Ignored files (cache, venv, build artifacts)
-
+    project_root/
+    │
+    ├── pyproject.toml          # Package configuration (PEP 517/518)
+    ├── README.md               # Project documentation
+    ├── LICENSE                 # License file
+    │
+    ├── src/                    # Source layout (import isolation)
+    │   └── mes_packages/       # Finite element library
+    │       ├── __init__.py
+    │       ├── base.py
+    │       ├── calcul_symbolique.py
+    │       ├── matrice_reference.py
+    │       ├── mesh.py
+    │       ├── methode_CG.py
+    │       ├── methode_DG.py
+    │       ├── methode_hyperbolique.py
+    │       ├── quadrature.py
+    │       └── sparse.py
+    │
+    ├── tests/                  # Unit tests (pytest)
+    │   ├── test_base.py
+    │   ├── test_calcul_symbolique.py
+    │   ├── test_matrice_reference.py
+    │   ├── test_mesh.py
+    │   ├── test_methode_CG.py
+    │   ├── test_methode_DG.py
+    │   ├── test_quadrature.py
+    │   └── test_sparse.py
+    │
+    ├── examples/               # Jupyter notebooks demonstrating usage
+    │   ├── exemple_CG.ipynb
+    │   ├── exemple_DG.ipynb
+    │   ├── exemple_hyperbo.ipynb
+    │   ├── exemple_mesh.ipynb
+    │   ├── exemple_normale_triange.ipynb
+    │   ├── exemple_quadrature.ipynb
+    │   ├── exemple_reference.ipynb
+    │   ├── exemple_sparse.ipynb
+    │   ├── exemple_matrices_locales.ipynb
+    │   ├── exemple_matrice_face_dun_triangle_DG.ipynb
+    │   ├── exemple_matrice_saut_DG.ipynb
+    │   └── exemple.visu.ipynb
+    │
+    ├── notebooks/              # (Optional) teaching notebooks or research drafts
+    │
+    └── .gitignore              # Ignored files (cache, venv, build artifacts)
+    
 
 
 ---
