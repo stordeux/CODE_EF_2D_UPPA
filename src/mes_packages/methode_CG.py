@@ -908,3 +908,79 @@ def nombre_DDL_CG_par_DDL_DG(mesh,  ordre):
     scatter_nodal_vector_DG(compteur_DG, mesh, ordre, title="", figsize=(10, 8), cmap='Pastel1', s=20)
     return compteur
 
+
+def erreur_L2_CG(Uh, u_exact, mesh, ordre: int):
+    """
+    Calcule || u_h - u_exact ||_{L2(Ω)} pour une solution CG.
+
+    Parameters
+    ----------
+    Uh : array_like
+        Vecteur des ddl CG (solution numérique)
+    u_exact : callable
+        Fonction analytique u_exact(x,y)
+    mesh : meshio.Mesh
+    ordre : int
+        Ordre des éléments finis
+
+    Returns
+    -------
+    errL2 : float
+        Norme L2 de l'erreur
+    """
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    loc_to_glob, _, _ = build_loctoglob_CG(mesh, ordre)
+
+    # quadrature "suffisamment exacte"
+    ordreq = 2 * ordre + 2
+    wq, xq, yq = quadrature_triangle_ref_2D(ordreq)
+
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+    Nq = len(wq)
+
+    # Pré-évaluation des bases sur le triangle de référence
+    Phi = np.empty((Nloc, Nq), dtype=Uh.dtype)
+    for i in range(ordre + 1):
+        for j in range(ordre + 1 - i):
+            k = loc2D_to_loc1D(i, j)
+            Phi[k, :] = base(xq, yq, i, j, ordre)
+
+    err2 = 0.0
+    Uh_loc = np.empty(Nloc, dtype=Uh.dtype)
+    for T, (pt0, pt1, pt2) in enumerate(triangles):
+
+        # Sommets physiques
+        A0 = points[pt0]
+        A1 = points[pt1]
+        A2 = points[pt2]
+
+        # Jacobien affine
+        B = np.column_stack((A1 - A0, A2 - A0))
+        detJ = abs(np.linalg.det(B))
+
+        # ddl locaux
+        for i in range(ordre + 1):
+            for j in range(ordre + 1 - i):
+                k = loc2D_to_loc1D(i, j)
+                glob = loc_to_glob[T,i,j]
+                Uh_loc[k] = Uh[glob]
+
+        for q in range(Nq):
+
+            # point physique
+            x_phys = A0 + B @ np.array([xq[q], yq[q]])
+
+            # valeur EF
+            uh_q = np.dot(Uh_loc, Phi[:, q])
+
+            # valeur exacte
+            uex_q = u_exact(x_phys[0], x_phys[1])
+            diff_q = uh_q - uex_q
+            err2 += wq[q] * diff_q * np.conj(diff_q) * detJ
+
+    return np.sqrt(err2.real)
+
+

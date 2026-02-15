@@ -1,7 +1,7 @@
 import numpy as np
 import sympy as sp
 from mes_packages import create_mesh_circle_in_square
-from mes_packages import build_masse_CG, build_rigidite_CG, build_nodal_vector_CG,build_masse_frontiere_CG, termes_source_frontiere_CG, termes_source_frontiere_gradn_CG, terme_source_CG
+from mes_packages import build_masse_CG, build_rigidite_CG, build_nodal_vector_CG,build_masse_frontiere_CG, termes_source_frontiere_CG, termes_source_frontiere_gradn_CG, terme_source_CG, erreur_L2_CG
 from mes_packages.calcul_symbolique import build_f_and_grads
 
 
@@ -180,6 +180,16 @@ def test_termes_source_volumique():
     assert np.isclose(val_x, val_x_bis, atol=1e-6), "Le terme source volumique doit être égal à M@V"
     assert np.isclose(val_y, val_y_bis, atol=1e-6), "Le terme source volumique doit être égal à M@V"
 
-
+def test_norme_L2_CG():
+    mesh = create_mesh_circle_in_square(0.1, 0.3,0.05)
+    ordre = 4
+    M_CG = build_masse_CG(mesh, ordre, verbose=False)
+    func = lambda x,y: x**2 + y**2  
+    func0 = lambda x,y: 0
+    V = build_nodal_vector_CG(func, mesh, ordre)
+    norme_L2_1 = np.sqrt(M_CG.sesquilinear_form(V, V))
+    norme_L2_2 =erreur_L2_CG(V, func0, mesh, ordre)
+    assert np.isclose(norme_L2_1, norme_L2_2, atol=1e-6), "La norme L2 doit être égale à sqrt(M@V·V)"
+    norme_L2_0 =erreur_L2_CG(V, func, mesh, ordre)
+    assert np.isclose(norme_L2_0, 0, atol=1e-6), "L'erreur L2 doit être proche de 0 lorsque la fonction est exactement représentée"
     
-
