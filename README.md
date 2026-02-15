@@ -108,16 +108,13 @@ Make sure the Jupyter kernel uses the virtual environment ".venv".
 
 REPOSITORY STRUCTURE
 
-src/
-mes_packages/ finite element library
-
-tests/ unit tests
-examples/ usage examples
-notebooks/ teaching notebooks
-
-pyproject.toml package configuration
-README.md
-LICENSE
+    | - src/mes_packages/  # the finite element library
+    | - tests/ # unit tests
+    | - examples/ # usage examples
+    | - notebooks/ # teaching notebooks
+    | pyproject.toml package configuration
+    | README.md
+    | LICENSE
 
 ---
 
