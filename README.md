@@ -162,6 +162,12 @@ Students must:
 
 ---
 
+Acknowledgments
+
+AI-assisted development tools (ChatGPT and GitHub Copilot) were used to facilitate parts of the implementation and documentation.
+
+---
+
 AUTHOR
 
 Sébastien Tordeux
