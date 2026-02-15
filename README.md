@@ -108,13 +108,31 @@ Make sure the Jupyter kernel uses the virtual environment ".venv".
 
 REPOSITORY STRUCTURE
 
-    | - src/mes_packages/  # the finite element library
-    | - tests/ # unit tests
-    | - examples/ # usage examples
-    | - notebooks/ # teaching notebooks
-    | pyproject.toml package configuration
-    | README.md
-    | LICENSE
+    project_root/
+    │
+    ├── pyproject.toml          # Package configuration (PEP 517/518)
+    ├── README.md               # Project documentation
+    ├── LICENSE                 # License file
+    │
+    ├── src/                    # Source code (recommended "src layout")
+    │   └── mes_packages/       # Finite element library
+    │       ├── __init__.py
+    │       ├── base.py
+    │       ├── calcul_symbolique.py
+    │       ├── matrice_reference.py
+    │       ├── mesh.py
+    │       ├── methode_CG.py
+    │       ├── methode_DG.py
+    │       ├── methode_hyperbolique.py
+    │       ├── quadrature.py
+    │       └── sparse.py
+    │
+    ├── tests/                  # Unit tests (pytest)
+    │
+    ├── examples/               # Minimal usage scripts
+    │
+    └── notebooks/              # Teaching / research notebooks
+
 
 ---
 
