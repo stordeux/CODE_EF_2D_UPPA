@@ -641,7 +641,7 @@ def candidate_triangles(x, y, spgrid):
     hx   = spgrid["hx"];   hy   = spgrid["hy"]
     nx   = spgrid["nx"];   ny   = spgrid["ny"]
 
-    # ⚠️ floor obligatoire (et sans epsilon)
+    # floor obligatoire (et sans epsilon)
     ix = int(np.floor((x - xmin)/hx))
     iy = int(np.floor((y - ymin)/hy))
 
