@@ -984,3 +984,78 @@ def erreur_L2_CG(Uh, u_exact, mesh, ordre: int):
     return np.sqrt(err2.real)
 
 
+
+
+def eval_CG_point(Uh, mesh, ordre, x, y, spgrid):
+    """Évalue u_h en UN point (x, y)."""
+    val = eval_CG_with_grid(Uh, mesh, ordre,
+                            np.array([x]),
+                            np.array([y]),
+                            spgrid)
+    # Si eval_CG_with_grid renvoie déjà un scalaire, on le retourne.
+    if np.isscalar(val):
+        return val
+    else:
+        return val[0]
+
+def eval_CG_with_grid(Uh, mesh, ordre, X, Y, spgrid):
+    """
+    Évalue u_h en plusieurs points (vecteurs X,Y).
+    """
+
+    X = np.atleast_1d(X)
+    Y = np.atleast_1d(Y)
+    assert X.shape == Y.shape
+
+    pts  = mesh.points[:, :2]
+    tris = np.asarray(mesh.cells_dict["triangle"])
+    loc_to_glob, _, _ = build_loctoglob_CG(mesh, ordre)
+
+    xmin = spgrid["xmin"]; ymin = spgrid["ymin"]
+    hx   = spgrid["hx"];   hy   = spgrid["hy"]
+    nx   = spgrid["nx"];   ny   = spgrid["ny"]
+    grid = spgrid["grid"]
+
+    Nloc = (ordre+1)*(ordre+2)//2
+    Uh_loc = np.empty(Nloc, dtype=Uh.dtype)
+
+    values = np.zeros(X.size, dtype=Uh.dtype)
+
+    for p in range(X.size):
+
+        xp, yp = X[p], Y[p]
+
+        # ici : floor SANS epsilon (point unique)
+        ix = int(np.floor((xp - xmin)/hx))
+        iy = int(np.floor((yp - ymin)/hy))
+
+        ix = max(0, min(ix, nx-1))
+        iy = max(0, min(iy, ny-1))
+
+        # triangles candidats
+        for T in grid[ix][iy]:
+
+            i0, i1, i2 = tris[T]
+            A0, A1, A2 = pts[i0], pts[i1], pts[i2]
+
+            B = np.column_stack((A1-A0, A2-A0))
+            xi, eta = np.linalg.solve(B, np.array([xp, yp]) - A0)
+
+            if (xi >= -1e-8) and (eta >= -1e-8) and (xi + eta <= 1+1e-8):
+
+                # reconstruction locale
+                for i in range(ordre+1):
+                    for j in range(ordre+1-i):
+                        k = loc2D_to_loc1D(i, j)
+                        Uh_loc[k] = Uh[loc_to_glob[T, i, j]]
+
+                val = 0.0
+                for i in range(ordre+1):
+                    for j in range(ordre+1-i):
+                        k = loc2D_to_loc1D(i, j)
+                        val += Uh_loc[k]*base(xi, eta, i, j, ordre)
+
+                values[p] = val
+                break
+
+    return values if values.size > 1 else values[0]

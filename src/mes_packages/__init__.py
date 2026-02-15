@@ -20,7 +20,9 @@ from .mesh import (
     plot_un_trianlge_et_ses_voisins,
     calcul_normale,
     plot_triangle_with_normals,
-    plot_structure_voisinage
+    plot_structure_voisinage,
+    build_spatial_grid,
+    candidate_triangles
     )    
 from .methode_DG import (
     build_loctoglob_DG,
@@ -65,7 +67,9 @@ from .methode_CG import (
     plot_nodal_vector_moins_fonction_CG,
     nombre_DDL_CG_par_DDL_DG,
     terme_source_CG,
-    erreur_L2_CG
+    erreur_L2_CG,
+    eval_CG_with_grid,
+    eval_CG_point
     )
 from .methode_hyperbolique import (
     assemble_hyperbo
@@ -147,5 +151,9 @@ __all__ = [
     "nombre_dof_DG",
     "build_jump_matrix_DG",
     "terme_source_CG",
-    "erreur_L2_CG"]
+    "erreur_L2_CG",
+    "build_spatial_grid",
+    "candidate_triangles",
+    "eval_CG_with_grid",
+    "eval_CG_point"]
 __version__ = "0.0.1"

@@ -572,3 +572,85 @@ def plot_structure_voisinage(mesh, ielt_test=None, ax=None):
     plt.show()
 
     return ielt_test
+
+import numpy as np
+
+def build_spatial_grid(mesh, nx=None, ny=None):
+    """
+    Construit une grille spatiale uniforme pour accélérer la localisation.
+    Version robuste aux erreurs d'arrondi flottant.
+    """
+
+    pts = mesh.points[:, :2]
+    tris = np.asarray(mesh.cells_dict["triangle"])
+
+    xmin, ymin = pts.min(axis=0)
+    xmax, ymax = pts.max(axis=0)
+
+    NT = len(tris)
+
+    if nx is None:
+        nx = int(np.sqrt(NT))
+    if ny is None:
+        ny = nx
+
+    hx = (xmax - xmin) / nx
+    hy = (ymax - ymin) / ny
+
+    # Tolérance géométrique (très petite, relative au pas)
+    epsx = 1e-12
+    epsy = 1e-12
+
+    grid = [[[] for _ in range(ny)] for _ in range(nx)]
+
+    for T, (i0, i1, i2) in enumerate(tris):
+        P = pts[[i0, i1, i2]]
+
+        txmin, tymin = P.min(axis=0)
+        txmax, tymax = P.max(axis=0)
+
+        # floor obligatoire + léger élargissement de la bounding box
+        ix0 = int(np.floor((txmin - xmin)/hx - epsx))
+        ix1 = int(np.floor((txmax - xmin)/hx + epsx))
+
+        iy0 = int(np.floor((tymin - ymin)/hy - epsy))
+        iy1 = int(np.floor((tymax - ymin)/hy + epsy))
+
+        ix0 = max(ix0, 0); ix1 = min(ix1, nx-1)
+        iy0 = max(iy0, 0); iy1 = min(iy1, ny-1)
+
+        for ix in range(ix0, ix1+1):
+            for iy in range(iy0, iy1+1):
+                grid[ix][iy].append(T)
+
+    return {
+        "grid": grid,
+        "xmin": xmin, "ymin": ymin,
+        "hx": hx, "hy": hy,
+        "nx": nx, "ny": ny
+    }
+
+
+def candidate_triangles(x, y, spgrid):
+    """
+    Retourne la liste des triangles candidats pour le point (x,y).
+    Version robuste aux erreurs d'arrondi flottant.
+    """
+
+    xmin = spgrid["xmin"]; ymin = spgrid["ymin"]
+    hx   = spgrid["hx"];   hy   = spgrid["hy"]
+    nx   = spgrid["nx"];   ny   = spgrid["ny"]
+
+    # ⚠️ floor obligatoire (et sans epsilon)
+    ix = int(np.floor((x - xmin)/hx))
+    iy = int(np.floor((y - ymin)/hy))
+
+    # Clamp pour éviter les débordements en bord de domaine
+    ix = max(0, min(ix, nx-1))
+    iy = max(0, min(iy, ny-1))
+
+    return spgrid["grid"][ix][iy]
+
+
+
+
