@@ -197,3 +197,11 @@ Sébastien Tordeux
 EPC Makutu, UPPA, INRIA, LMAP UMR CNRS 5142
 
 Do not hesitate to report bug at sebastien.tordeux@univ-pau.fr
+
+---
+
+License
+
+This project is licensed under the MIT License.
+
+Copyright (c) 2026 Sébastien Tordeux
