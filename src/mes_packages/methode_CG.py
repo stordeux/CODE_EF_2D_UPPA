@@ -12,11 +12,13 @@ from mes_packages import (
     build_masse_ref_1D,
     base_1D,
     build_dof_coordinates_DG,
+    mesh,
     plot_nodal_vector_DG,
     build_loctoglob_DG,
     scatter_nodal_vector_DG,
     calcul_normale,
-    Kref
+    Kref,
+    build_neighborhood_structure_with_bc
     )
 from mes_packages.sparse import COOMatrix
 from mes_packages.quadrature import (
@@ -565,13 +567,14 @@ def nombre_dof_CG(mesh,ordre:int) -> int:
     loc_to_glob_CG, glob_to_xy_CG, Nglob_CG=build_loctoglob_CG(mesh, ordre)
     return Nglob_CG
 
-def build_masse_frontiere_CG(mesh,ordre:int):
+def build_masse_frontiere_CG(mesh,ordre:int,domaine = "all"):
     
     M_ref_1D = build_masse_ref_1D(ordre)
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]    
     loctoglob_CG, glob_to_xy_CG, Nglob_CG=build_loctoglob_CG(mesh, ordre)
-    neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
+    # neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
+    neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name= build_neighborhood_structure_with_bc(mesh)
 
     # Calcul des dimensions
     n_dof_face = ordre + 1
@@ -588,8 +591,12 @@ def build_masse_frontiere_CG(mesh,ordre:int):
         # Boucle sur les 3 faces de chaque triangle
         for F in range(3):
             V = neighbors[T, F]
-            
-            if V == -1: 
+            if domaine == "all":
+                TEST = V <= -1
+            else:
+                refer = reference_BC(domaine)
+                TEST = V == refer
+            if TEST:                    
                 # Récupération des sommets du triangle physique
                 pt0, pt1, pt2 = triangles[T]
                 A0 = points[pt0]
@@ -632,7 +639,7 @@ def build_masse_frontiere_CG(mesh,ordre:int):
 
 
 
-def termes_source_frontiere_CG(func,mesh, ordre:int):
+def termes_source_frontiere_CG(func,mesh, ordre:int,domaine="all"):
     """
     Construit le terme **source frontière** en méthode C0 (continue)
 
@@ -660,8 +667,7 @@ def termes_source_frontiere_CG(func,mesh, ordre:int):
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]    
     loctoglob_CG, glob_to_xy_CG, Nglob_CG=build_loctoglob_CG(mesh, ordre)
-    neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
-
+    neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name= build_neighborhood_structure_with_bc(mesh)
     # Taille globale
     # **Sécurise si jamais il y a des -1 dans loctoglob_CG**
     valid = loctoglob_CG[loctoglob_CG >= 0]
@@ -686,8 +692,14 @@ def termes_source_frontiere_CG(func,mesh, ordre:int):
 
         for F in range(3):
             V = neighbors[T, F]
-            if V != -1:
-                continue  # pas une face de bord
+            if domaine == "all":
+                is_boundary = (V < 0)
+            else:
+                refer = reference_BC(domaine)
+                is_boundary = (V == refer)
+
+            if not is_boundary:
+                continue
 
             # Extrémités de la face physique
             if F == 0:
@@ -739,7 +751,7 @@ def plot_support_terme_source(F_CG, mesh, ordre:int):
     scatter_nodal_vector_DG(F_DG, mesh, ordre, title="", figsize=(10, 8), cmap='viridis', s=20)
 
 
-def termes_source_frontiere_gradn_CG(fx, fy, mesh,ordre:int):
+def termes_source_frontiere_gradn_CG(fx, fy, mesh,ordre:int,domaine="all"):
     """
     Assemble F_i = ∫_{∂Ω} (∇f · n_ext) φ_i ds   en C0
     en utilisant la routine du notebook: calcul_normale(A0,A1,A2,i).
@@ -751,8 +763,7 @@ def termes_source_frontiere_gradn_CG(fx, fy, mesh,ordre:int):
     triangles = np.asarray(mesh.cells_dict["triangle"])
     # Tables de correspondance C0 et DG
     loctoglob_CG, glob_to_xy, Nglob_CG = build_loctoglob_CG(mesh, ordre)
-    neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
-
+    neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name= build_neighborhood_structure_with_bc(mesh)
 
 
     # Taille globale
@@ -775,9 +786,17 @@ def termes_source_frontiere_gradn_CG(fx, fy, mesh,ordre:int):
         A1 = points[pt1]
         A2 = points[pt2]
 
+
         for F in range(3):
-            if neighbors[T, F] != -1:
-                continue  # pas une face de bord
+            V = neighbors[T, F]
+            if domaine == "all":
+                is_boundary = (V < 0)
+            else:
+                refer = reference_BC(domaine)
+                is_boundary = (V == refer)
+
+            if not is_boundary:
+                continue
 
             # Extrémités de la face physique (comme dans ton code)
             if F == 0:

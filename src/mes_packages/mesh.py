@@ -708,11 +708,11 @@ def create_mesh_circle_in_square(radius=0.2, square_size=1.0, mesh_size=0.05):
     # 3. Physical Groups (CEUX QUI T'INTÉRESSENT)
     # ============================================================
 
-    tag_fourier = gmsh.model.addPhysicalGroup(1, [l1, l2, l3, l4,c1, c2, c3, c4])
-    gmsh.model.setPhysicalName(1, tag_fourier, "NEUMANN")
+    tag_fourier = gmsh.model.addPhysicalGroup(1, [l1, l2, l3, l4])
+    gmsh.model.setPhysicalName(1, tag_fourier, "FOURIER")
 
     tag_neumann = gmsh.model.addPhysicalGroup(1, [c1, c2, c3, c4])
-    gmsh.model.setPhysicalName(1, tag_neumann, "FOURIER")
+    gmsh.model.setPhysicalName(1, tag_neumann, "NEUMANN")
 
     tag_domain = gmsh.model.addPhysicalGroup(2, [surface])
     gmsh.model.setPhysicalName(2, tag_domain, "OMEGA")
