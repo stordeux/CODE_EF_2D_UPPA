@@ -55,6 +55,7 @@ from .methode_DG import (
     terme_source_DG,
     build_masse_variable_DG,
     build_mixte_variable_DG,
+    build_masse_frontiere_variable_DG,
     )
 from .methode_CG import (
     build_loctoglob_CG,
@@ -154,6 +155,7 @@ __all__ = [
     "plot_faces_interieur_CG",
     "plot_nodal_vector_moins_fonction_CG",
     "build_matrice_masse_frontière_DG",
+    "build_masse_frontiere_variable_DG",
     "nombre_DDL_CG_par_DDL_DG",
     "plot_nodal_vector_moins_fonction_DG",
     "nombre_dof_DG",

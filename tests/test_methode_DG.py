@@ -355,3 +355,114 @@ def test_mixte_xy_DG(ordre):
             assert np.isclose(val_var, val_ref, atol=1e-10), \
                 f"Mismatch in y-direction for u={fu.__name__ if hasattr(fu,'__name__') else fu}, v={fv.__name__ if hasattr(fv,'__name__') else fv}"
 
+def test_masse_frontiere_variable_DG():
+    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
+    ordre = 4
+
+    func = lambda x, y: x**2 + y**2
+    f1 = lambda x, y: 1.0      
+    fx = lambda x, y: x      
+    fy = lambda x, y: y      
+    fxy = lambda x, y: x*y
+    fx2 = lambda x, y: x**2
+    fy2 = lambda x, y: y**2
+
+    # --- matrice de masse variable de frontière DG ---
+    M_var_front_DG = build_masse_frontiere_variable_DG(func, mesh, ordre)
+    M_front_DG = build_matrice_masse_frontière_DG(mesh, ordre)
+
+    # --- vecteurs nodaux DG ---
+    V1   = build_nodal_vector_DG(f1, mesh, ordre)
+    Vx   = build_nodal_vector_DG(fx, mesh, ordre)
+    Vy   = build_nodal_vector_DG(fy, mesh, ordre)
+    V   = build_nodal_vector_DG(func, mesh, ordre)
+    Vxy  = build_nodal_vector_DG(fxy, mesh, ordre)
+    Vx2 = build_nodal_vector_DG(fx2, mesh, ordre)
+    Vy2 = build_nodal_vector_DG(fy2, mesh, ordre)
+
+    # --- produit faible via la masse variable de frontière ---
+    val_var = M_var_front_DG.sesquilinear_form(V1, V1)
+    val_ref = M_front_DG.sesquilinear_form(V, V1)
+
+    assert np.isclose(val_var, val_ref, atol=1e-10), "DG: incohérence masse variable de frontière / masse de frontière standard pour w=1 et v=f"
+
+    # --- produit faible via la masse variable de frontière ---
+    val_var = M_var_front_DG.sesquilinear_form(Vy, V1)
+    val_ref = M_front_DG.sesquilinear_form(V, Vy)
+
+    assert np.isclose(val_var, val_ref, atol=1e-10), "DG: incohérence masse variable de frontière / masse de frontière standard pour w=1 et v=f"
+
+    # --- produit faible via la masse variable de frontière ---
+    val_var = M_var_front_DG.sesquilinear_form(Vy, Vx)
+    val_ref = M_front_DG.sesquilinear_form(V, Vxy)
+
+    assert np.isclose(val_var, val_ref, atol=1e-10), "DG: incohérence masse variable de frontière / masse de frontière standard pour w=1 et v=f"
+
+    # --- produit faible via la masse variable de frontière ---
+    val_var = M_var_front_DG.sesquilinear_form(Vx, Vy)
+    val_ref = M_front_DG.sesquilinear_form(Vxy, V)
+
+    assert np.isclose(val_var, val_ref, atol=1e-10), "DG: incohérence masse variable de frontière / masse de frontière standard pour w=1 et v=f"
+
+    # --- produit faible via la masse variable de frontière ---
+    val_var = M_var_front_DG.sesquilinear_form(Vx, Vx)
+    val_ref = M_front_DG.sesquilinear_form(Vx2, V)
+
+    assert np.isclose(val_var, val_ref, atol=1e-10), "DG: incohérence masse variable de frontière / masse de frontière standard pour w=1 et v=f"
+
+    # --- produit faible via la masse variable de frontière ---
+    val_var = M_var_front_DG.sesquilinear_form(Vy, Vy)
+    val_ref = M_front_DG.sesquilinear_form(Vy2, V)
+
+    assert np.isclose(val_var, val_ref, atol=1e-10), "DG: incohérence masse variable de frontière / masse de frontière standard pour w=1 et v=f"
+
+def test_front_variable_DG():
+    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
+    ordre = 4
+
+
+    f1 = lambda x, y: 1.0      
+    fx = lambda x, y: x      
+    fy = lambda x, y: y      
+    fxy = lambda x, y: x*y
+
+    # --- matrice de masse variable de frontière DG ---
+    M_var_front_DG_Fou = build_masse_frontiere_variable_DG(f1, mesh, ordre,"Fourier")
+
+    # --- vecteurs nodaux DG ---
+    V1   = build_nodal_vector_DG(f1, mesh, ordre)
+    Vx   = build_nodal_vector_DG(fx, mesh, ordre)
+    Vy   = build_nodal_vector_DG(fy, mesh, ordre)
+    Vxy  = build_nodal_vector_DG(fxy, mesh, ordre)
+
+    assert M_var_front_DG_Fou.is_symmetric()
+
+    val = M_var_front_DG_Fou.sesquilinear_form(V1, V1)
+    assert np.isclose(val,4*0.3, atol=1e-10), "DG: test du périmetre"
+
+    val = M_var_front_DG_Fou.sesquilinear_form(Vx, V1)
+    assert np.isclose(val,0, atol=1e-10), "DG: test de symétrie"
+
+    val = M_var_front_DG_Fou.sesquilinear_form(Vy, V1)
+    assert np.isclose(val,0, atol=1e-10), "DG: test de symétrie"
+
+    val = M_var_front_DG_Fou.sesquilinear_form(Vy, Vx)
+    assert np.isclose(val,0, atol=1e-10), "DG: test de symétrie"
+    
+    assert M_var_front_DG_Fou.is_symmetric()
+
+    # --- matrice de masse variable de frontière DG ---
+    M_var_front_DG_Neu = build_masse_frontiere_variable_DG(f1, mesh, ordre,"Neumann")
+    val = M_var_front_DG_Neu.sesquilinear_form(V1, V1)
+    assert np.isclose(val,2*np.pi*0.1, atol=1e-2), "DG: test du périmetre pour condition de Neumann"
+
+    M_front = build_matrice_masse_frontière_DG(mesh, ordre)
+    nnz = M_front.nnz
+    ndof = M_front.shape[0]
+    Msomme = COOMatrix(ndof, ndof, 3*nnz)
+    Msomme = Msomme + M_var_front_DG_Fou
+    Msomme = Msomme + M_var_front_DG_Neu
+    func = lambda x, y: x**2+y**2
+    V = build_nodal_vector_DG(func, mesh, ordre)
+    assert np.allclose(Msomme.sesquilinear_form(V,V),M_front.sesquilinear_form(V,V), atol=1e-10), "DG: la somme des matrices de Fourier et Neumann doit être égale à la matrice de frontière standard"
+

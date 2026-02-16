@@ -9,6 +9,8 @@ from mes_packages import (
     build_masse_ref_1D,
     build_neighborhood_structure,
     base,derivative_base,
+    build_neighborhood_structure_with_bc,
+    base_1D,
     COOMatrix)
 from mes_packages.matrice_reference import Mref
 from mes_packages.quadrature import quadrature_triangle_ref_2D
@@ -1419,6 +1421,8 @@ def build_masse_variable_DG(mass_func, mesh, ordre: int):
     return Mat
 
 
+
+
 def build_mixte_variable_DG(rho_func, mesh, ordre):
     """
     Construit les deux matrices mixtes DG :
@@ -1510,4 +1514,158 @@ def build_mixte_variable_DG(rho_func, mesh, ordre):
                 Maty.ajout(ig, jg, Ay_loc[i, j])
 
     return Matx, Maty
+
+
+
+
+
+
+
+
+def build_masse_frontiere_variable_DG(rho_func, mesh, ordre: int, domaine="all"):
+    """
+    Masse de frontière DG avec coefficient variable rho(x,y)
+
+        M_ij = ∫_Γ rho(x,y) φ_i φ_j.conj ds
+
+    Parameters
+    ----------
+    rho_func : callable
+        rho(x,y)
+    mesh : meshio.Mesh
+    ordre : int
+    domaine : str
+        "all" ou nom physique (Dirichlet, Neumann, ...)
+
+    Returns
+    -------
+    Mat : COOMatrix
+    """
+
+    n_gauss = 2 * ordre + 1
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name = \
+        build_neighborhood_structure_with_bc(mesh)
+
+    NT = len(triangles)
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+    Ndof = NT * Nloc
+
+
+    if domaine == "all":
+        n_faces = np.sum(neighbors < 0)
+    else:
+        n_faces = np.sum(neighbors == reference_BC(domaine))
+    nnz = n_faces * (ordre + 1)**2
+
+    Mat = COOMatrix(Ndof, Ndof, nnz)
+
+    # --------------------------------------------------
+    # Quadrature 1D (UNE seule fois)
+    # --------------------------------------------------
+    xi_gauss, w_gauss = np.polynomial.legendre.leggauss(n_gauss)
+    sq = 0.5 * (xi_gauss + 1)  # transformation de [-1,1] à [0,1]
+    wq = 0.5 * w_gauss
+    # sq : points de quadrature dans [0,1]
+
+    n_dof_face = ordre + 1
+    # ------------------------------------------
+    # Evaluation des bases restreintes à la face
+    # ------------------------------------------
+    PhiF = np.zeros((n_dof_face, len(sq)))
+    for iloc_face in range(n_dof_face):
+        for k in range(len(sq)):
+            PhiF[iloc_face, k] = base_1D(sq[k], iloc_face, ordre)
+    # ==================================================
+    # Boucle éléments / faces
+    # ==================================================
+    for T in range(NT):
+        # ------------------------------------------
+        # Calcul de l'indice du début du bloc de T dans la matrice globale
+        # ------------------------------------------
+        offset = T * Nloc
+        pt0, pt1, pt2 = triangles[T]
+        A0 = points[pt0]
+        A1 = points[pt1]
+        A2 = points[pt2]
+
+        for F in range(3):
+
+            V = neighbors[T, F]
+
+            if domaine == "all":
+                TEST = V <= -1
+            else:
+                TEST = V == reference_BC(domaine)
+
+            if not TEST:
+                continue
+
+            # ------------------------------------------
+            # Géométrie de la face
+            # ------------------------------------------
+            if F == 0:
+                P0, P1 = A1, A2
+            elif F == 1:
+                P0, P1 = A2, A0
+            else:
+                P0, P1 = A0, A1
+
+            edge = P1 - P0
+            longueur = np.linalg.norm(edge)
+
+            # ------------------------------------------
+            # Points physiques de quadrature
+            # x(ξ) = P0 + ξ (P1-P0)
+            # ------------------------------------------
+            x_phys = P0[0] + sq * edge[0]
+            y_phys = P0[1] + sq * edge[1]
+
+            rho_q = rho_func(x_phys, y_phys)
+
+            W = wq * rho_q * longueur   # ds = longueur dξ
+                        # ------------------------------------------
+            # Masse locale variable sur la face
+            # ------------------------------------------
+            Mloc = (PhiF * W) @ PhiF.T
+
+
+            for iloc_face in range(n_dof_face):
+                # coordonnées barycentriques du point de face
+                # reconstruction (m,n) équivalent à ta logique iface_iglob
+                if F == 0:
+                    m = ordre - iloc_face
+                    n = iloc_face
+                    ilocT = loc2D_to_loc1D(m,n)
+                elif F == 1:
+                    m = 0
+                    n = ordre - iloc_face
+                    ilocT = loc2D_to_loc1D(m,n)
+                else:
+                    m = iloc_face
+                    n = 0
+                    ilocT = loc2D_to_loc1D(m,n)
+                for jloc_face in range(n_dof_face):
+                    # coordonnées barycentriques du point de face
+                    # reconstruction (m,n) équivalent à ta logique iface_iglob
+                    if F == 0:
+                        m = ordre - jloc_face
+                        n = jloc_face
+                        jlocT = loc2D_to_loc1D(m,n)
+                    elif F == 1:
+                        m = 0
+                        n = ordre - jloc_face
+                        jlocT = loc2D_to_loc1D(m,n)
+                    else:
+                        m = jloc_face
+                        n = 0
+                        jlocT = loc2D_to_loc1D(m,n)
+                    ig = offset + ilocT
+                    jg = offset + jlocT
+                    Mat.ajout(ig, jg, Mloc[iloc_face, jloc_face])
+
+    return Mat
 

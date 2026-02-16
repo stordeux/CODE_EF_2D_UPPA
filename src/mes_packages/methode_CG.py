@@ -1078,3 +1078,4 @@ def eval_CG_with_grid(Uh, mesh, ordre, X, Y, spgrid):
                 break
 
     return values if values.size > 1 else values[0]
+
