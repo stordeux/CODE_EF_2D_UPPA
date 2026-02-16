@@ -22,7 +22,12 @@ from .mesh import (
     plot_triangle_with_normals,
     plot_structure_voisinage,
     build_spatial_grid,
-    candidate_triangles
+    candidate_triangles,
+    build_bc_from_gmsh,
+    inject_bc_into_neighbors,
+    build_neighborhood_structure_with_bc,
+    plot_mesh_with_bc,
+    build_boundary_conditions
     )    
 from .methode_DG import (
     build_loctoglob_DG,
@@ -49,7 +54,7 @@ from .methode_DG import (
     build_jump_matrix_DG,
     terme_source_DG,
     build_masse_variable_DG,
-    build_mixte_variable_DG
+    build_mixte_variable_DG,
     )
 from .methode_CG import (
     build_loctoglob_CG,
@@ -161,6 +166,11 @@ __all__ = [
     "eval_CG_point",
     "terme_source_DG",
     "build_masse_variable_DG",
-    "build_mixte_variable_DG"
+    "build_mixte_variable_DG",
+    "build_bc_from_gmsh",
+    "inject_bc_into_neighbors",
+    "build_neighborhood_structure_with_bc",
+    "plot_mesh_with_bc",
+    "build_boundary_conditions"
     ]
 __version__ = "0.0.1"

@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 from numpy.typing import ArrayLike
 from numpy.typing import NDArray
 from matplotlib.patches import Polygon
+import meshio, tempfile, os
 
 def verifier_et_corriger_orientation(mesh):
     """
@@ -70,7 +71,7 @@ def verifier_et_corriger_orientation(mesh):
     
     return nb_corriges
 
-def create_mesh_circle_in_square(radius=0.2, square_size=1.0, mesh_size=0.2):
+def create_mesh_circle_in_square_old(radius=0.2, square_size=1.0, mesh_size=0.2):
     with pygmsh.geo.Geometry() as geom:
         # Définir les points du carré
         p1 = geom.add_point([-square_size / 2, -square_size / 2, 0], mesh_size)
@@ -160,6 +161,9 @@ def plot_mesh(mesh):
     plt.gca().set_aspect('equal')
     plt.title("Maillage du domaine avec un trou circulaire")
     plt.show()
+
+
+
 
 def build_neighborhood_structure(triangles):
     """
@@ -652,5 +656,555 @@ def candidate_triangles(x, y, spgrid):
     return spgrid["grid"][ix][iy]
 
 
+def create_mesh_circle_in_square(radius=0.2, square_size=1.0, mesh_size=0.05):
+    import gmsh
+    import meshio
+    import tempfile
+    import os
+
+    gmsh.initialize()
+    gmsh.model.add("square_with_hole")
+
+    # ============================================================
+    # 1. Géométrie du carré
+    # ============================================================
+    geo = gmsh.model.geo
+
+    p1 = geo.addPoint(-square_size/2, -square_size/2, 0, mesh_size)
+    p2 = geo.addPoint( square_size/2, -square_size/2, 0, mesh_size)
+    p3 = geo.addPoint( square_size/2,  square_size/2, 0, mesh_size)
+    p4 = geo.addPoint(-square_size/2,  square_size/2, 0, mesh_size)
+
+    l1 = geo.addLine(p1, p2)
+    l2 = geo.addLine(p2, p3)
+    l3 = geo.addLine(p3, p4)
+    l4 = geo.addLine(p4, p1)
+
+    outer_loop = geo.addCurveLoop([l1, l2, l3, l4])
+
+    # ============================================================
+    # 2. Cercle (IMPORTANT : 4 arcs en GEO, pas addCircle)
+    # ============================================================
+    pc = geo.addPoint(0, 0, 0, mesh_size)
+
+    p5 = geo.addPoint( radius, 0, 0, mesh_size)
+    p6 = geo.addPoint( 0, radius, 0, mesh_size)
+    p7 = geo.addPoint(-radius, 0, 0, mesh_size)
+    p8 = geo.addPoint( 0,-radius, 0, mesh_size)
+
+    c1 = geo.addCircleArc(p5, pc, p6)
+    c2 = geo.addCircleArc(p6, pc, p7)
+    c3 = geo.addCircleArc(p7, pc, p8)
+    c4 = geo.addCircleArc(p8, pc, p5)
+
+    inner_loop = geo.addCurveLoop([c1, c2, c3, c4])
+
+    # Surface perforée
+    surface = geo.addPlaneSurface([outer_loop, inner_loop])
+
+    geo.synchronize()
+
+    # ============================================================
+    # 3. Physical Groups (CEUX QUI T'INTÉRESSENT)
+    # ============================================================
+
+    tag_fourier = gmsh.model.addPhysicalGroup(1, [l1, l2, l3, l4,c1, c2, c3, c4])
+    gmsh.model.setPhysicalName(1, tag_fourier, "NEUMANN")
+
+    tag_neumann = gmsh.model.addPhysicalGroup(1, [c1, c2, c3, c4])
+    gmsh.model.setPhysicalName(1, tag_neumann, "FOURIER")
+
+    tag_domain = gmsh.model.addPhysicalGroup(2, [surface])
+    gmsh.model.setPhysicalName(2, tag_domain, "OMEGA")
+
+    # ============================================================
+    # 4. Maillage
+    # ============================================================
+    gmsh.model.mesh.generate(2)
+
+    # ============================================================
+    # 5. Écriture réelle du .msh (sinon meshio perd les tags !)
+    # ============================================================
+    tmp = tempfile.NamedTemporaryFile(suffix=".msh", delete=False)
+    tmp.close()
+
+    gmsh.write(tmp.name)
+    gmsh.finalize()
+
+    # Lecture meshio avec toutes les metadata gmsh
+    mesh = meshio.read(tmp.name)
+    os.remove(tmp.name)
+
+    # Optionnel : corriger orientation
+    verifier_et_corriger_orientation(mesh)
+
+    return mesh
+
+def build_bc_from_gmsh(mesh, name_to_code):
+    """
+    Construit le dictionnaire
+        bc_from_edge[(i,j)] = code BC
+    à partir des Physical Groups Gmsh.
+    """
+
+    lines = mesh.cells_dict["line"]
+    tags  = mesh.cell_data_dict["gmsh:physical"]["line"]
+    field = mesh.field_data
+
+    # mapping ID gmsh -> code interne (-1/-2/-3)
+    gmsh_id_to_code = {}
+
+    for name, code in name_to_code.items():
+        gmsh_id = field[name][0]
+        gmsh_id_to_code[gmsh_id] = code
+
+    bc_from_edge = {}
+
+    for (i, j), tag in zip(lines, tags):
+        edge = tuple(sorted((int(i), int(j))))
+        bc_from_edge[edge] = gmsh_id_to_code[tag]
+
+    return bc_from_edge
+
+def inject_bc_into_neighbors(neighbors, edges_to_triangles, bc_from_edge):
+    """
+    Injecte les conditions aux limites dans la table de voisinage.
+
+    Parameters
+    ----------
+    neighbors : (NT,3) ndarray
+        Table de voisinage topologique (-1 = bord)
+
+    edges_to_triangles : dict
+        edge -> [(triangle, face_locale), ...]
+
+    bc_from_edge : dict
+        edge -> code BC (-2, -3, ...)
+
+    Returns
+    -------
+    neighbors : ndarray modifié (in-place)
+    """
+
+    for edge, tri_list in edges_to_triangles.items():
+
+        # arête frontière = un seul triangle attaché
+        if len(tri_list) == 1:
+            (iT, iF) = tri_list[0]
+
+            if edge not in bc_from_edge:
+                raise ValueError(f"Boundary edge {edge} has no BC assigned")
+
+            neighbors[iT, iF] = bc_from_edge[edge]
+
+    return neighbors
 
 
+
+
+def build_neighborhood_structure_with_bc_old(mesh, name_to_code):
+    """
+    Construit la connectivité de voisinage d’un maillage triangulaire
+    et remplace les faces de bord par les codes de conditions aux limites.
+
+    Cette fonction réalise TROIS étapes distinctes :
+
+    1) Construction de la connectivité purement topologique du maillage
+       (indépendante de Gmsh) :
+
+           - détection des arêtes globales
+           - identification des triangles adjacents
+           - remplissage de la table de voisinage
+
+    2) Lecture des Physical Groups Gmsh définis sur les arêtes (dim = 1)
+       afin d’associer chaque arête frontière à une condition aux limites.
+
+    3) Injection de ces conditions aux limites dans la table de voisinage :
+       une face frontière n’est plus marquée -1 mais par un code utilisateur
+       (ex: -2 = Fourier, -3 = Neumann).
+
+    Parameters
+    ----------
+    mesh : meshio.Mesh
+        Maillage issu de Gmsh contenant :
+            - des triangles (cells_dict["triangle"])
+            - des arêtes physiques (cells_dict["line"])
+            - les tags Gmsh (cell_data_dict["gmsh:physical"])
+
+    name_to_code : dict[str, int]
+        Mapping entre le nom Gmsh de la frontière et le code interne utilisé
+        par le solveur.
+        Exemple :
+            {
+                "FOURIER": -2,
+                "NEUMANN": -3,
+            }
+
+    Returns
+    -------
+    neighbors : ndarray (NT,3)
+        Table de voisinage par triangle.
+
+        neighbors[iT, iF] =
+            indice du triangle voisin si la face est interne
+            code de BC (<0) si la face est frontière
+
+        Convention locale :
+            iF = 0 : face opposée au sommet 0  (edge v1–v2)
+            iF = 1 : face opposée au sommet 1  (edge v2–v0)
+            iF = 2 : face opposée au sommet 2  (edge v0–v1)
+
+    neighbor_faces : ndarray (NT,3)
+        Correspondance des faces entre triangles adjacents.
+
+        Si neighbors[iT,iF] = jT >= 0 alors :
+            neighbor_faces[iT,iF] = jF
+        où jF est la face locale de jT correspondant à la même arête.
+
+        Si la face est frontière :
+            neighbor_faces[iT,iF] = -1
+
+        Cette table est indispensable pour les flux DG
+        (accès direct à la trace du voisin).
+
+    edges_to_triangles : dict
+        Structure duale du maillage :
+
+            edge = (min(i,j), max(i,j))  →  [(iT,iF), (jT,jF)]
+
+        Elle associe une arête globale aux triangles qui la portent.
+
+        Cas possibles :
+            len(list) == 2  → arête interne
+            len(list) == 1  → arête frontière
+
+        Cette structure est utilisée pour :
+            - détecter les frontières
+            - injecter les BC
+            - intégrer une seule fois par face (méthodes DG)
+            - debug topologique
+    """
+
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+    lines     = mesh.cells_dict["line"]
+    tags      = mesh.cell_data_dict["gmsh:physical"]["line"]
+    field     = mesh.field_data
+
+    NT = len(triangles)
+
+    neighbors = -np.ones((NT,3), dtype=int)
+    neighbor_faces = -np.ones((NT,3), dtype=int)
+
+    edges_to_triangles = {}
+
+    # -------------------------------------------------
+    # 1 Construire la connectivité pure (topologique)
+    # -------------------------------------------------
+    for iT, tri in enumerate(triangles):
+
+        edges = [
+            (tri[1], tri[2]),  # face 0
+            (tri[2], tri[0]),  # face 1
+            (tri[0], tri[1])   # face 2
+        ]
+
+        for iF, (i, j) in enumerate(edges):
+
+            edge = tuple(sorted((int(i), int(j))))
+
+            if edge not in edges_to_triangles:
+                edges_to_triangles[edge] = []
+
+            edges_to_triangles[edge].append((iT, iF))
+
+    # -------------------------------------------------
+    # 2 Remplir les voisins internes
+    # -------------------------------------------------
+    for edge, tri_list in edges_to_triangles.items():
+
+        if len(tri_list) == 2:
+            (t1, f1), (t2, f2) = tri_list
+
+            neighbors[t1, f1] = t2
+            neighbors[t2, f2] = t1
+
+            neighbor_faces[t1, f1] = f2
+            neighbor_faces[t2, f2] = f1
+
+    # -------------------------------------------------
+    # 3 Construire le mapping gmsh_id -> code interne
+    # -------------------------------------------------
+    gmsh_id_to_code = {}
+
+    for name, code in name_to_code.items():
+        gmsh_id = field[name][0]
+        gmsh_id_to_code[gmsh_id] = code
+
+    # -------------------------------------------------
+    # 4 Associer chaque arête frontière à sa BC Gmsh
+    # -------------------------------------------------
+    bc_from_edge = {}
+
+    for (i, j), tag in zip(lines, tags):
+        edge = tuple(sorted((int(i), int(j))))
+        bc_from_edge[edge] = gmsh_id_to_code[tag]
+
+    # -------------------------------------------------
+    # 5 Injecter les BC dans neighbors
+    # -------------------------------------------------
+    for edge, tri_list in edges_to_triangles.items():
+
+        if len(tri_list) == 1:  # frontière
+            (iT, iF) = tri_list[0]
+
+            if edge not in bc_from_edge:
+                raise ValueError(f"Frontière non classée par Gmsh : {edge}")
+
+            neighbors[iT, iF] = bc_from_edge[edge]
+
+    return neighbors, neighbor_faces, edges_to_triangles
+
+
+def build_boundary_conditions(mesh):
+    """
+    Construit automatiquement :
+
+        bc_from_edge[(i,j)] = code_interne
+        reference_BC("NAME") -> code_interne
+        bc_name(code)        -> "NAME"
+    """
+
+    if "line" not in mesh.cells_dict:
+        raise ValueError("Le mesh ne contient pas d'arêtes (type 'line').")
+
+    lines = mesh.cells_dict["line"]
+    tags  = mesh.cell_data_dict["gmsh:physical"]["line"]
+
+    # --- tag gmsh -> nom ---
+    tag_to_name = {
+        int(tag): name
+        for name, (tag, dim) in mesh.field_data.items()
+        if dim == 1
+    }
+
+    if not tag_to_name:
+        raise ValueError("Aucune frontière physique détectée.")
+
+    # --- nom -> code interne (-1,-2,...) ---
+    name_to_code = {
+        name: -(k + 2)
+        for k, name in enumerate(sorted(tag_to_name.values()))
+    }
+
+    # --- code -> nom (inverse indispensable !) ---
+    code_to_name = {v: k for k, v in name_to_code.items()}
+
+    # --- construire bc_from_edge ---
+    bc_from_edge = {}
+    for (i, j), tag in zip(lines, tags):
+        edge = tuple(sorted((int(i), int(j))))
+        bc_from_edge[edge] = name_to_code[tag_to_name[int(tag)]]
+
+    # --- helpers ---
+    def reference_BC(name):
+        return name_to_code[name.upper()]
+
+    def bc_name(code):
+        return code_to_name[int(code)]
+
+    return bc_from_edge, reference_BC, bc_name
+
+
+def build_neighborhood_structure_with_bc(mesh):
+    """
+    Construit la structure de voisinage du maillage et y injecte automatiquement
+    les conditions aux limites définies dans Gmsh.
+
+    Cette fonction constitue l'interface entre la description géométrique Gmsh
+    (Physical Groups) et la structure topologique utilisée par le solveur EF/DG.
+
+    Elle réalise successivement :
+        1) Reconstruction de la connectivité pure du maillage triangulaire
+           (indépendamment de Gmsh) :
+               - identification des triangles voisins
+               - construction de la table edges_to_triangles
+
+        2) Lecture automatique des Physical Groups de dimension 1 (frontières)
+           présents dans le mesh Gmsh via :
+               mesh.field_data
+               mesh.cell_data_dict["gmsh:physical"]
+
+        3) Attribution AUTOMATIQUE d'un code interne négatif à chaque type
+           de condition limite détecté :
+               -1, -2, -3, ...
+           (aucun dictionnaire utilisateur n'est nécessaire).
+
+        4) Construction du dictionnaire bc_from_edge :
+               bc_from_edge[(i,j)] = code_BC
+           qui associe chaque arête frontière à sa condition limite.
+
+        5) Injection de ces codes directement dans la table de voisinage :
+               neighbors[iT,iF] = jT    si face interne
+               neighbors[iT,iF] = -k    si face frontière de type k
+
+    -------------------------------------------------------------------------
+    Signification des objets retournés
+    -------------------------------------------------------------------------
+
+    neighbors : ndarray (NT,3)
+        Structure principale utilisée par les méthodes EF/DG.
+
+        neighbors[iT,iF] donne ce qu'il y a "en face" de la face iF du triangle iT :
+
+            >= 0  : indice du triangle voisin (face interne)
+            <  0  : code de condition limite (face frontière)
+
+        Cette unique structure encode à la fois :
+            - la topologie du maillage
+            - la nature physique des frontières
+
+    neighbor_faces : ndarray (NT,3)
+        neighbor_faces[iT,iF] = jF est le numéro de la face dans le triangle voisin
+        correspondant à la face iF de iT.
+
+        Indispensable pour :
+            - flux numériques DG
+            - intégrales de saut / moyenne
+            - orientation cohérente des normales
+
+    edges_to_triangles : dict
+        Dictionnaire dual donnant, pour chaque arête géométrique,
+        les triangles qui la portent :
+
+            (i,j) -> [(triangle, face_locale), ...]
+
+        Utile pour :
+            - assemblages par face
+            - post-traitement
+            - debug topologique
+
+    reference_BC : function
+        Fonction utilitaire permettant d'obtenir le code interne associé
+        à un nom de frontière Gmsh :
+
+            reference_BC("Neumann")  -> -2
+            reference_BC("Fourier")  -> -1
+
+        Permet d'écrire un code solveur lisible sans dépendre de Gmsh.
+
+    bc_name : function
+        Fonction inverse donnant le nom physique associé à un code interne :
+
+            bc_name(-2) -> "NEUMANN"
+
+        Utilisée pour affichage, visualisation, diagnostics.
+
+    -------------------------------------------------------------------------
+    Remarque conceptuelle
+    -------------------------------------------------------------------------
+    Après appel à cette fonction, le solveur ne dépend plus de Gmsh.
+    Toute l'information nécessaire est contenue dans la structure discrète :
+
+        (triangles, neighbors, neighbor_faces)
+
+    ce qui correspond exactement à la description mathématique du squelette
+    du maillage utilisé dans les formulations EF/DG.
+    """
+    triangles = mesh.cells_dict["triangle"]
+
+    neighbors, neighbor_faces, edges_to_triangles = \
+        build_neighborhood_structure(triangles)
+
+    bc_from_edge, reference_BC, bc_name = \
+        build_boundary_conditions(mesh)
+
+    neighbors = inject_bc_into_neighbors(
+        neighbors,
+        edges_to_triangles,
+        bc_from_edge
+    )
+
+    return neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name
+
+
+def plot_mesh_with_bc(mesh):
+    """
+    Trace le maillage en coloriant automatiquement les différentes
+    conditions aux limites définies dans Gmsh.
+    """
+
+    # --- Construction voisinage + BC ---
+    neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name = build_neighborhood_structure_with_bc(mesh)
+
+    triangles = mesh.cells_dict["triangle"]
+    points = mesh.points[:, :2]
+
+    print(f"Nombre d'éléments : {len(triangles)}")
+    print(f"Nombre de sommets : {len(points)}")
+
+    fig, ax = plt.subplots(figsize=(6, 6))
+
+    # --------------------------------------------------
+    # 1. Tracé du maillage (fond neutre)
+    # --------------------------------------------------
+    ax.triplot(points[:, 0], points[:, 1], triangles,
+               color="0.8", linewidth=0.8)
+
+    # --------------------------------------------------
+    # 2. Détection automatique des BC présentes
+    # --------------------------------------------------
+    bc_codes = sorted({v for v in neighbors.flatten() if v < 0})
+
+    # palette simple mais robuste
+    cmap = plt.get_cmap("tab10")
+
+    code_to_color = {
+        code: cmap(i % 10)
+        for i, code in enumerate(bc_codes)
+    }
+
+    drawn = set()
+
+    # --------------------------------------------------
+    # 3. Parcours des faces frontière
+    # --------------------------------------------------
+    for iT, tri in enumerate(triangles):
+
+        for iF in range(3):
+
+            code = neighbors[iT, iF]
+
+            if code >= 0:
+                continue  # face interne
+
+            color = code_to_color[code]
+
+            # sommets de la face opposée à iF
+            if iF == 0:
+                i1, i2 = tri[1], tri[2]
+            elif iF == 1:
+                i1, i2 = tri[2], tri[0]
+            else:
+                i1, i2 = tri[0], tri[1]
+
+            P1 = points[i1]
+            P2 = points[i2]
+
+            label = None
+            if code not in drawn:
+                label = bc_name(code)
+                drawn.add(code)
+
+            ax.plot([P1[0], P2[0]],
+                    [P1[1], P2[1]],
+                    color=color,
+                    linewidth=2.5,
+                    label=label)
+
+    # --------------------------------------------------
+    # 4. Finition
+    # --------------------------------------------------
+    ax.set_aspect("equal")
+    ax.set_title("Maillage avec conditions aux limites (auto)")
+    ax.legend()
+    plt.show()

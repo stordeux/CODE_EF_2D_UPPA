@@ -353,5 +353,5 @@ def test_mixte_xy_DG(ordre):
             val_ref = Ky.sesquilinear_form(Vrho, U)
 
             assert np.isclose(val_var, val_ref, atol=1e-10), \
-                f"Mismatch in y-direction for u={fu.__name__ if hasattr(fu,'__name__') else fu}, v={fv}"
+                f"Mismatch in y-direction for u={fu.__name__ if hasattr(fu,'__name__') else fu}, v={fv.__name__ if hasattr(fv,'__name__') else fv}"
 
