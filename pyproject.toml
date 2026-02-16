@@ -18,6 +18,8 @@ dependencies = [
   "matplotlib",
   "sympy",
   "meshio",
+  "gmsh",
+  "shapely"
 ]
 [project.optional-dependencies]
 test = [
