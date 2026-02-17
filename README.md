@@ -120,12 +120,12 @@ REPOSITORY STRUCTURE
     │       ├── base.py
     │       ├── calcul_symbolique.py
     │       ├── matrice_reference.py
-    │       ├── mesh.py
-    │       ├── methode_CG.py
-    │       ├── methode_DG.py
+    │       ├── mesh.py          (un exemple de creation de maillage et des fonctionnalités)
+    │       ├── methode_CG.py    (des fonctionnalité pour les CG)
+    │       ├── methode_DG.py    (des fonctionnalité pour les DG)
     │       ├── methode_hyperbolique.py
     │       ├── quadrature.py
-    │       ├── sparse.py
+    │       ├── sparse.py         (gestion facile des matrices sparse)
     |       ├── assemblage_general.py    (construction de toutes les matrices DG et CG)
     │
     ├── tests/                  # Unit tests (pytest)
@@ -137,7 +137,7 @@ REPOSITORY STRUCTURE
     │   ├── test_methode_DG.py
     │   ├── test_quadrature.py
     │   ├── test_sparse.py
-    |   ├── test_assemblage_general
+    |   ├── test_assemblage_general.py
     │
     ├── examples/               # Jupyter notebooks demonstrating usage
     │   ├── exemple_CG.ipynb
