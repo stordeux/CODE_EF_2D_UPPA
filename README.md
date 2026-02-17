@@ -84,7 +84,7 @@ Linux / macOS:
 
 3. Install the finite element library
 
-   pip install -e .
+   python -m pip install -e .
 
 This installs the package "mes_packages" in editable mode.
 
@@ -154,8 +154,6 @@ REPOSITORY STRUCTURE
     ├── notebooks/              # (Optional) teaching notebooks or research drafts
     │
     └── .gitignore              # Ignored files (cache, venv, build artifacts)
-    
-
 
 ---
 

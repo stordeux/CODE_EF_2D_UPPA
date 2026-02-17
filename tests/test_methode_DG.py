@@ -16,7 +16,7 @@ def test_loctoglob_DG():
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
     for ordre in range(1,5):
-        loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+        loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
         print_loctoglob_DG(loctoglob_DG,triangles, ordre,n_glob_DG)
 
 
@@ -54,7 +54,7 @@ def test_vecteur_nodal_DG():
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
     ordre = 2
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     dof_coords_DG = build_dof_coordinates_DG(mesh, ordre)
     f1 = lambda x, y: x**2 + y**2
     U1 = build_nodal_vector_DG(f1, mesh,ordre)
@@ -154,7 +154,7 @@ def test_build_masse_frontiere_elt_DG():
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
     ordre = 2
-    loctoglob_DG,_ = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG,_ = build_loctoglob_DG(mesh, ordre)
     # Declaration d'une matrice sparse pour stocker la matrice de masse globale
     Nloc = (ordre + 1) * (ordre + 2) // 2
     # Test de la matrice locale de face

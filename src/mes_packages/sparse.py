@@ -311,3 +311,20 @@ class COOMatrix:
         B.data[:self.l] = self.data[:self.l]
         B.l = self.l
         return B
+    
+    def is_zero(self, tol=1e-10):
+        """
+        Teste si la matrice assemblée est numériquement nulle.
+        (après réduction des contributions répétées)
+        """
+        if self.l == 0:
+            return True
+
+        # Passage par SciPy pour réduire les doublons
+        self.create_COO()
+        csr = self.coo.tocsr()
+
+        if csr.nnz == 0:
+            return True
+
+        return np.max(np.abs(csr.data)) <= tol

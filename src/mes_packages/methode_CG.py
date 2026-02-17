@@ -27,32 +27,34 @@ from mes_packages.quadrature import (
 
 
 def build_loctoglob_CG(mesh, ordre:int, tol=1e-10):
-    points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
-    triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
     """
-    Construit la table de correspondance locale -> globale pour les éléments finis C0
+    Construit la table de correspondance locale -> globale pour les éléments finis C0.
 
     Parameters
     ----------
-    triangles : array (NT, 3)
-        Indices des sommets de chaque triangle
-    points : array (N_points, 2)
-        Coordonnées (x, y) des sommets du maillage
+    mesh : meshio.Mesh
+        Maillage triangulaire contenant les points (mesh.points) et les cellules
+        (mesh.cells_dict["triangle"]).
     ordre : int
-        Ordre des éléments finis (>= 1)
+        Ordre des éléments finis (>= 1).
     tol : float
-        Tolérance de fusion/tri (quantification)
+        Tolérance géométrique utilisée pour fusionner les DDL coïncidents
+        (quantification des coordonnées avant identification globale).
 
     Returns
     -------
-    loc_to_glob : array (NT, ordre+1, ordre+1)
-        Table locale -> globale : loc_to_glob[iT, iloc1, iloc2] = iglob
-        Les indices invalides (hors du triangle) valent **-1**
+    loc_to_glob : array (NT, Nloc)
+        Table locale -> globale plate :
+            loc_to_glob[iT, k] = iglob
+        où k = loc2D_to_loc1D(i, j) avec i + j <= ordre et
+            Nloc = (ordre+1)*(ordre+2)//2.
     glob_to_xy : array (Nglob_C0, 2)
-        Coordonnées des DDL globaux (arrondies à tol)
+        Coordonnées des DDL globaux (après fusion géométrique avec la tolérance).
     Nglob_C0 : int
-        Nombre total de DDL C0
-    """
+        Nombre total de degrés de liberté C0.
+    """    
+    points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
+    triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
     if ordre < 1:
         raise ValueError("**L'ordre doit être au moins 1** pour les éléments finis continus.")
 
@@ -108,7 +110,7 @@ def build_loctoglob_CG(mesh, ordre:int, tol=1e-10):
     Nglob_C0 = iglob + 1
 
     # Table locale->globale : mettre -1 pour les indices invalides
-    loc_to_glob = -np.ones((NT, ordre + 1, ordre + 1), dtype=int)
+    loc_to_glob = -np.ones((NT, (ordre + 1)*(ordre+2)//2), dtype=int)
 
     # Coordonnées des DDL globaux : on prend les coordonnées arrondies (cohérentes avec la fusion)
     glob_to_xy = np.zeros((Nglob_C0, 2), dtype=float)
@@ -118,8 +120,8 @@ def build_loctoglob_CG(mesh, ordre:int, tol=1e-10):
         iloc1 = LOC_TO_GLOB_INTER[k, 1]
         iloc2 = LOC_TO_GLOB_INTER[k, 2]
         g     = LOC_TO_GLOB_INTER[k, 3]
-
-        loc_to_glob[iT, iloc1, iloc2] = g
+        iloc = loc2D_to_loc1D(iloc1, iloc2)
+        loc_to_glob[iT, iloc] = g
         glob_to_xy[g, 0] = LOC_TO_GLOB_INTERxyrounded[k, 0]
         glob_to_xy[g, 1] = LOC_TO_GLOB_INTERxyrounded[k, 1]
 
@@ -144,7 +146,7 @@ def nodal_CG_to_DG(U_CG:np.ndarray, mesh,ordre:int) -> np.ndarray:
     """
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]   
     loctoglob_CG, glob_to_xy_CG, Nglob_CG=build_loctoglob_CG(mesh, ordre)
-    loctoglob_DG, Nglob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, Nglob_DG = build_loctoglob_DG(mesh, ordre)
 
     NT = loctoglob_CG.shape[0]
     Nloc = loctoglob_DG.shape[1]
@@ -155,8 +157,8 @@ def nodal_CG_to_DG(U_CG:np.ndarray, mesh,ordre:int) -> np.ndarray:
     for iT in range(NT):
         for iloc1 in range(ordre + 1):
             for iloc2 in range(ordre + 1 - iloc1):
-                iglob_CG = loctoglob_CG[iT, iloc1, iloc2]
                 iloc = loc2D_to_loc1D(iloc1, iloc2)
+                iglob_CG = loctoglob_CG[iT, iloc]
                 iglob_DG = loctoglob_DG[iT,iloc]
                 U_DG[iglob_DG] = U_CG[iglob_CG]
     
@@ -232,12 +234,12 @@ def build_masse_CG_lent(mesh, ordre:int, verbose=True):
         for iloc1 in range(ordre + 1):
             for jloc1 in range(ordre + 1 - iloc1):
                 i_local = loc2D_to_loc1D(iloc1, jloc1)
-                iglob = loc_to_glob_CG[ielt, iloc1, jloc1]
+                iglob = loc_to_glob_CG[ielt, i_local]
                 
                 for iloc2 in range(ordre + 1):
                     for jloc2 in range(ordre + 1 - iloc2):
                         j_local = loc2D_to_loc1D(iloc2, jloc2)
-                        jglob = loc_to_glob_CG[ielt, iloc2, jloc2]
+                        jglob = loc_to_glob_CG[ielt, j_local]
                         
                         M_CG.ajout(iglob, jglob, Mloc[i_local, j_local])
     
@@ -291,12 +293,12 @@ def build_masse_CG(mesh, ordre:int, verbose=True):
         for iloc1 in range(ordre + 1):
             for jloc1 in range(ordre + 1 - iloc1):
                 i_local = loc2D_to_loc1D(iloc1, jloc1)
-                iglob = loc_to_glob_CG[ielt, iloc1, jloc1]
+                iglob = loc_to_glob_CG[ielt, i_local]
                 
                 for iloc2 in range(ordre + 1):
                     for jloc2 in range(ordre + 1 - iloc2):
                         j_local = loc2D_to_loc1D(iloc2, jloc2)
-                        jglob = loc_to_glob_CG[ielt, iloc2, jloc2]
+                        jglob = loc_to_glob_CG[ielt, j_local]
                         
                         M_CG.ajout(iglob, jglob, Mloc[i_local, j_local])
     
@@ -352,7 +354,7 @@ def terme_source_CG(func, mesh, ordre:int):
         for iloc in range(ordre + 1):
             for jloc in range(ordre + 1 - iloc):
                 k=loc2D_to_loc1D(iloc, jloc)
-                iglob = loc_to_glob_CG[T,iloc, jloc]
+                iglob = loc_to_glob_CG[T, k]
                 F_CG[iglob] += F_loc[k]
 
     return F_CG
@@ -430,12 +432,12 @@ def build_rigidite_CG_lent(mesh, ordre:int, verbose=True):
         for iloc1 in range(ordre + 1):
             for jloc1 in range(ordre + 1 - iloc1):
                 i_local = loc2D_to_loc1D(iloc1, jloc1)
-                iglob = loc_to_glob_CG[ielt, iloc1, jloc1]
+                iglob = loc_to_glob_CG[ielt, i_local]
                 
                 for iloc2 in range(ordre + 1):
                     for jloc2 in range(ordre + 1 - iloc2):
                         j_local = loc2D_to_loc1D(iloc2, jloc2)
-                        jglob = loc_to_glob_CG[ielt, iloc2, jloc2]
+                        jglob = loc_to_glob_CG[ielt, j_local]
                         
                         K_CG.ajout(iglob, jglob, Kloc[i_local, j_local])
 
@@ -491,12 +493,12 @@ def build_rigidite_CG(mesh, ordre:int, verbose=True):
         for iloc1 in range(ordre + 1):
             for jloc1 in range(ordre + 1 - iloc1):
                 i_local = loc2D_to_loc1D(iloc1, jloc1)
-                iglob = loc_to_glob_CG[ielt, iloc1, jloc1]
+                iglob = loc_to_glob_CG[ielt, i_local]
                 
                 for iloc2 in range(ordre + 1):
                     for jloc2 in range(ordre + 1 - iloc2):
                         j_local = loc2D_to_loc1D(iloc2, jloc2)
-                        jglob = loc_to_glob_CG[ielt, iloc2, jloc2]
+                        jglob = loc_to_glob_CG[ielt, j_local]
                         
                         K_CG.ajout(iglob, jglob, Kloc[i_local, j_local])
 
@@ -554,7 +556,8 @@ def iface_iglob_CG(ielt, iface, iloc_face, ordre:int, loctoglob_CG):
         raise ValueError(f"iface doit être 0, 1 ou 2, pas {iface}")
     
     # Conversion indice local -> indice global
-    iglob_CG = loctoglob_CG[ ielt,m,n]
+    k=loc2D_to_loc1D(m, n)
+    iglob_CG = loctoglob_CG[ ielt,k]
     
     return iglob_CG
 
@@ -655,7 +658,7 @@ def termes_source_frontiere_CG(func,mesh, ordre:int,domaine="all"):
         Coordonnées des sommets
     neighbors : array (NT, 3)
         Voisinage des triangles (-1 si face de bord)
-    loctoglob_CG : array (NT, ordre+1, ordre+1)
+    loctoglob_CG :: array (NT, Nloc)
         Table locale -> globale C0
 
     Returns:
@@ -741,7 +744,7 @@ def plot_support_terme_source(F_CG, mesh, ordre:int):
     points = mesh.points[:, :2]
     triangles = np.asarray(mesh.cells_dict["triangle"])
     # Tables de correspondance C0 et DG
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     loc_to_glob_CG, glob_to_xy, Nglob_CG = build_loctoglob_CG(mesh, ordre)
     # Coordonnées DG des DDL pour l'affichage
     dof_coords = build_dof_coordinates_DG(mesh, ordre)
@@ -901,7 +904,7 @@ def plot_nodal_vector_moins_fonction_CG(U_CG,func, mesh, ordre, title):
     # Recuperation de la géométrie du maillage
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]    
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     dof_coords = build_dof_coordinates_DG(mesh, ordre)
     U_func_CG = build_nodal_vector_CG(func, mesh,ordre)
     U_diff_CG = U_CG - U_func_CG
@@ -920,7 +923,8 @@ def nombre_DDL_CG_par_DDL_DG(mesh,  ordre):
     for ielt in range(n_triangles):    
         for iloc1 in range(ordre + 1):
             for jloc1 in range(ordre + 1 - iloc1):
-                iglob = loc_to_glob_CG[ielt, iloc1, jloc1]
+                iloc = loc2D_to_loc1D(iloc1, jloc1)
+                iglob = loc_to_glob_CG[ielt, iloc]
                 compteur[iglob] += 1
 
     compteur_DG = nodal_CG_to_DG(compteur, mesh,ordre)
@@ -984,7 +988,7 @@ def erreur_L2_CG(Uh, u_exact, mesh, ordre: int):
         for i in range(ordre + 1):
             for j in range(ordre + 1 - i):
                 k = loc2D_to_loc1D(i, j)
-                glob = loc_to_glob[T,i,j]
+                glob = loc_to_glob[T,k]
                 Uh_loc[k] = Uh[glob]
 
         for q in range(Nq):
@@ -1066,7 +1070,7 @@ def eval_CG_with_grid(Uh, mesh, ordre, X, Y, spgrid):
                 for i in range(ordre+1):
                     for j in range(ordre+1-i):
                         k = loc2D_to_loc1D(i, j)
-                        Uh_loc[k] = Uh[loc_to_glob[T, i, j]]
+                        Uh_loc[k] = Uh[loc_to_glob[T, k]]
 
                 val = 0.0
                 for i in range(ordre+1):

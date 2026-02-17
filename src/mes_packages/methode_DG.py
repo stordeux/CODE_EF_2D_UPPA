@@ -15,7 +15,7 @@ from mes_packages import (
 from mes_packages.matrice_reference import Mref
 from mes_packages.quadrature import quadrature_triangle_ref_2D
 
-def build_loctoglob_DG(triangles, ordre):
+def build_loctoglob_DG(mesh, ordre):
     """
     Construit la table de correspondance locale -> globale
     pour la méthode Galerkin Discontinue (DG)
@@ -36,6 +36,7 @@ def build_loctoglob_DG(triangles, ordre):
     n_dof : int
         Nombre total de degrés de liberté = Nloc * n_triangles
     """
+    triangles = np.asarray(mesh.cells_dict["triangle"])
     n_triangles = len(triangles)
     Nloc = (ordre + 1) * (ordre + 2) // 2
     n_dof = Nloc * n_triangles
@@ -373,7 +374,7 @@ def plot_on_mesh_function(func, mesh, ordre, flag_maillage=True):
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]    
     
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     dof_coords = build_dof_coordinates_DG(mesh, ordre)
 
     # Listes pour stocker tous les points et sous-triangles
@@ -450,7 +451,7 @@ def plot_nodal_vector_DG(U, mesh, ordre, title,flag_maillage=True):
     # Recuperation de la géométrie du maillage
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]        
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     dof_coords = build_dof_coordinates_DG(mesh, ordre)
 
 
@@ -592,7 +593,7 @@ def plot_face_to_glob(ielt_test,iface_test,mesh,ordre):
 
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]        
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     dof_coords = build_dof_coordinates_DG(mesh, ordre)
 
     # Récupération des sommets du triangle physique
@@ -1145,7 +1146,7 @@ def build_matrice_masse_frontière_DG(mesh,ordre):
     M_ref_1D= build_masse_ref_1D(ordre)
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]        
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     dof_coords = build_dof_coordinates_DG(mesh, ordre)
     neighbors, _,_=build_neighborhood_structure(triangles)
     # Calcul des dimensions
@@ -1177,7 +1178,7 @@ def plot_nodal_vector_moins_fonction_DG(U,func, mesh, ordre, title):
     # Recuperation de la géométrie du maillage
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]        
-    loctoglob_DG, n_glob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     dof_coords = build_dof_coordinates_DG(mesh, ordre)
     U_func = build_nodal_vector_DG(func, mesh, ordre)
     U_diff = U - U_func
@@ -1224,7 +1225,7 @@ def build_jump_matrix_DG(mesh,ordre:int, verbose=False):
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
     neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
-    loctoglob_DG,Nglob_DG = build_loctoglob_DG(triangles, ordre)
+    loctoglob_DG,Nglob_DG = build_loctoglob_DG(mesh, ordre)
     # Calcul des dimensions
     Nloc = (ordre + 1) * (ordre + 2) //2
     
@@ -1668,4 +1669,8 @@ def build_masse_frontiere_variable_DG(rho_func, mesh, ordre: int, domaine="all")
                     Mat.ajout(ig, jg, Mloc[iloc_face, jloc_face])
 
     return Mat
+
+
+
+
 

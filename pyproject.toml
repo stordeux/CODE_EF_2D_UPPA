@@ -22,8 +22,11 @@ dependencies = [
   "shapely"
 ]
 [project.optional-dependencies]
-test = [
-  "pytest>=7"
-]
+test = ["pytest>=7"]
+dev = ["pytest", "ipython", "jupyter", "black", "ruff"]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
 [tool.setuptools.packages.find]
 where = ["src"]

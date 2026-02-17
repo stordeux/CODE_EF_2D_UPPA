@@ -80,6 +80,12 @@ from .methode_CG import (
     eval_CG_with_grid,
     eval_CG_point
     )
+from .assemblage_general import (
+    loc_to_glob_general,
+    precompute_ref,
+    grad_base_ref,
+    assemble_volume
+)
 from .methode_hyperbolique import (
     assemble_hyperbo
 )
@@ -173,6 +179,10 @@ __all__ = [
     "inject_bc_into_neighbors",
     "build_neighborhood_structure_with_bc",
     "plot_mesh_with_bc",
-    "build_boundary_conditions"
+    "build_boundary_conditions",
+    "loc_to_glob_general",
+    "precompute_ref",
+    "grad_base_ref",
+    "assemble_volume"
     ]
 __version__ = "0.0.1"
