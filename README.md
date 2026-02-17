@@ -125,7 +125,8 @@ REPOSITORY STRUCTURE
     │       ├── methode_DG.py
     │       ├── methode_hyperbolique.py
     │       ├── quadrature.py
-    │       └── sparse.py
+    │       ├── sparse.py
+    |       ├── assemblage_general.py    (construction de toutes les matrices DG et CG)
     │
     ├── tests/                  # Unit tests (pytest)
     │   ├── test_base.py
@@ -135,7 +136,8 @@ REPOSITORY STRUCTURE
     │   ├── test_methode_CG.py
     │   ├── test_methode_DG.py
     │   ├── test_quadrature.py
-    │   └── test_sparse.py
+    │   ├── test_sparse.py
+    |   ├── test_assemblage_general
     │
     ├── examples/               # Jupyter notebooks demonstrating usage
     │   ├── exemple_CG.ipynb
