@@ -258,10 +258,9 @@ def precompute_face_ref(ordre: int, ordreq: int | None = None, dtype=np.complex1
         ordreq = 2 * ordre + 2
 
     # Quadrature Gauss-Legendre sur t ∈ [0,1]
-    wi, xi = np.polynomial.legendre.leggauss(ordreq)   # sur [-1,1]
+    xi, wi = np.polynomial.legendre.leggauss(ordreq)   # sur [-1,1]
     t = 0.5 * (xi + 1.0)                               # -> [0,1]
     w = 0.5 * wi                                       # poids pour dt
-
     Nloc = (ordre + 1) * (ordre + 2) // 2
     Nq = t.size
 
@@ -274,7 +273,7 @@ def precompute_face_ref(ordre: int, ordreq: int | None = None, dtype=np.complex1
     # (ici : face 0 = (1,2), face 1 = (0,2), face 2 = (0,1))
     faces = np.array([[1, 2],
                       [0, 2],
-                      [0, 1]], dtype=int)
+                      [1, 0]], dtype=int)
 
     # Coordonnées (xhat,yhat) des points de quadrature sur chaque face
     xhat = np.empty((3, Nq), dtype=float)
@@ -325,7 +324,7 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
     triangles = np.asarray(mesh.cells_dict["triangle"])
 
     # besoin de dx/dy ?
-    need_dx = (operatoru == "dnu") or (operatorv == "dnv") or (operatoru == "dtu") or (operatorv == "dtv")
+    need_dx = (operatoru in ("dxu","dnu","dtu") or operatorv in ("dxv","dnv","dtv"))
     need_dn = (operatoru == "dnu") or (operatorv == "dnv")
     need_dt = (operatoru == "dtu") or (operatorv == "dtv")
 
@@ -335,6 +334,8 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
     Phi_dy = np.empty_like(Phi_dyhat[0,:,:])
     Phi_dn = np.empty_like(Phi_dxhat[0,:,:])
     Phi_dt = np.empty_like(Phi_dxhat[0,:,:])    
+    Phi_u = np.empty_like(Phi_dxhat[0,:,:])    
+    Phi_v = np.empty_like(Phi_dxhat[0,:,:])    
     for T, (i0, i1, i2) in enumerate(triangles):
         for F in range(3):
             V = neighbors[T, F]
@@ -348,12 +349,9 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
                 A0 = points[i0]
                 A1 = points[i1]
                 A2 = points[i2]
-                if F == 0:
-                    edge = A2 - A1
-                elif F == 1:
-                    edge = A0 - A2
-                else:  # F == 2
-                    edge = A1 - A0
+                
+                face_nodes = ((i1,i2),(i2,i0),(i0,i1))
+                edge = points[face_nodes[F][1]] - points[face_nodes[F][0]]
                 
                 # Calcul de la longueur de la faces pour la pondération quadrature
                 edge_length = np.linalg.norm(edge)
@@ -361,6 +359,7 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
                 # Jacobien affine
                 J = np.column_stack((A1 - A0, A2 - A0))
                 Jinv = np.linalg.inv(J)
+
 
                 # Points physiques
                 x_phys[:] = A0[0] + xq[F][:]*(A1[0]-A0[0]) + yq[F][:]*(A2[0]-A0[0])
@@ -374,7 +373,7 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
                 if need_dx:
                     Phi_dx[:, :] = Jinv[0, 0] * Phi_dxhat[F, :, :] + Jinv[1, 0] * Phi_dyhat[F, :, :]  # ∂/∂x
                     Phi_dy[:, :] = Jinv[0, 1] * Phi_dxhat[F, :, :] + Jinv[1, 1] * Phi_dyhat[F, :, :]  # ∂/∂y
-                if need_dt:
+                if need_dn:
                     normale =calcul_normale(A0, A1, A2, F)
                     Phi_dn[:,:] = normale[0]*Phi_dx + normale[1]*Phi_dy 
                 if need_dt:
@@ -384,24 +383,28 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
 
                 # Sélection opérateurs
                 if operatoru == "u":
-                    Phi_u = Phi_val[F,:,:]
+                    Phi_u[:,:] = Phi_val[F,:,:]
                 elif operatoru == "dxu":
-                    Phi_u = Phi_dx[F,:,:]
+                    Phi_u[:,:] = Phi_dx[:,:]
                 elif operatoru == "dyu":
-                    Phi_u = Phi_dy[F,:,:]
+                    Phi_u[:,:]   = Phi_dy[:,:]
                 elif operatoru == "dnu":
-                    Phi_u = Phi_dn
+                    Phi_u[:,:] = Phi_dn[:,:]
+                elif operatoru == "dtu":
+                    Phi_u[:,:] = Phi_dt[:,:]
                 else:
                     raise ValueError(f"Opérateur inconnu pour u : {operatoru}")
 
                 if operatorv == "v":
-                    Phi_v = Phi_val[F,:,:]
+                    Phi_v[:,:] = Phi_val[F,:,:]
                 elif operatorv == "dxv":
-                    Phi_v = Phi_dx[F,:,:]
+                    Phi_v[:,:] = Phi_dx[:,:]
                 elif operatorv == "dyv":
-                    Phi_v = Phi_dy[F,:,:]
+                    Phi_v[:,:] = Phi_dy[:,:]
                 elif operatorv == "dnv":
-                    Phi_v = Phi_dn
+                    Phi_v[:,:] = Phi_dn[:,:]
+                elif operatorv == "dtv":
+                    Phi_v[:,:] = Phi_dt[:,:]
                 else:
                     raise ValueError(f"Opérateur inconnu pour v : {operatorv}")
 
