@@ -182,10 +182,6 @@ def test_mixte_variable_CG():
     mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.025)
     ordre = 2
     func = lambda x, y: (x**2+y**2)/2
-    MAT_1x = assemble_volume(mesh, ordre, func, "dxu", "v", methode="CG")
-    MAT_1y = assemble_volume(mesh, ordre, func, "dyu", "v", methode="CG")
-    # Assemblage historique spécialisé
-    Masse_CG = build_masse_CG(mesh, ordre)
     f1 = lambda x,y: 1
     fx = lambda x,y: x
     fy = lambda x,y: y
@@ -193,6 +189,11 @@ def test_mixte_variable_CG():
     V1 = build_nodal_vector_CG(f1,mesh, ordre)
     Vx = build_nodal_vector_CG(fx,mesh, ordre)
     Vy = build_nodal_vector_CG(fy,mesh, ordre)
+    MAT_1x = assemble_volume(mesh, ordre, func, "dxu", "v", methode="CG")
+    MAT_1y = assemble_volume(mesh, ordre, func, "dyu", "v", methode="CG")
+    # Assemblage historique spécialisé
+    Masse_CG = build_masse_CG(mesh, ordre)
+
     val1x = Masse_CG.sesquilinear_form(Vx, V)
     val2x = MAT_1x.sesquilinear_form(Vx, Vx)
     assert np.isclose(val1x, val2x, atol=1e-12), "problème d'assemblage de la matrice variable mixte CG (dxu,v)"

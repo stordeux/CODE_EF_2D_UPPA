@@ -673,3 +673,665 @@ def make_vector_field(fx, fy):
     def fvec(x, y):
         return fx(x, y), fy(x, y)
     return fvec
+
+
+
+def assemble_skeleton_par_element(mesh, ordre, coef,
+                      operatoru="sautu", operatorv="sautv",
+                      methode="DG", dtype=np.complex128):
+    """
+    Assemble une matrice de squelette (faces internes uniquement) :
+
+        A_ij += ∫_{F_int} coef(x,y) * OPV(v_i) * OPU(u_j) ds
+
+    Convention :
+      - T = élément courant
+      - V = élément voisin
+      - nT = normale sortante de T sur la face
+      - nV = normale sortante de V sur la face commune (opposée à nT)
+      - t = tangente orientée suivant T : t = (-nT_y, nT_x)
+        et on utilise CE MÊME t pour les opérateurs côté V quand nécessaire.
+
+    Opérateurs supportés (pour u et v, avec u↔v) :
+      - Traces : uT, uV ; vT, vV
+      - Sauts : sautu = uT - uV ; sautv = vT - vV
+      - Dérivées normales : dnuT, dnuV ; dnvT, dnvV
+      - Saut normal : sautdnu = dnuT + dnuV ; sautdnv = dnvT + dnvV
+      - Dérivées cartésiennes : dxuT, dxuV, dyuT, dyuV (et idem v)
+      - Dérivées tangentielles (t orientée suivant T) :
+            dtuT, dtuV ; dtvT, dtvV
+            sautdtu = dtuT - dtuV ; sautdtv = dtvT - dtvV
+      - Flux vectoriel scalaire*normale :
+            uTnT = uT * nT (vecteur 2D), uVnV = uV * nV
+            sautDGu = uT*nT + uV*nV (vecteur 2D)
+        (et idem : vTnT, vVnV, sautDGv)
+        Si OPV et OPU sont vectoriels, on contracte par produit scalaire (dot).
+
+    Notes :
+      - On traite chaque face interne UNE fois (T < V).
+      - L’alignement des points de quadrature entre T et V est géré automatiquement
+        (on inverse l’ordre des points côté V si nécessaire).
+    """
+    # --- Alias pratique "sautDG"
+    if operatoru == "sautDG":
+        operatoru = "sautDGu"
+    if operatorv == "sautDG":
+        operatorv = "sautDGv"
+    # ------------------------------------------------------------
+    # Helpers locaux
+    # ------------------------------------------------------------
+    def _insert_block(Mat, rows_glob, cols_glob, Mblock):
+        """Insertion rapide d'un bloc (Nloc x Nloc) dans Mat."""
+        rr = np.repeat(rows_glob, cols_glob.size)
+        cc = np.tile(cols_glob, rows_glob.size)
+        vv = Mblock.reshape(-1)
+        Mat.ajout_rapide(rr, cc, vv.size, vv)
+
+    def _op_kind(op: str) -> str:
+        """Normalise les alias u/v -> 'kind' indépendant de la variable."""
+        # Synonymes pratiques : on interprète sans côté comme côté T
+        alias = {
+            "u": "uT", "v": "vT",
+            "dxu": "dxuT", "dxv": "dxvT",
+            "dyu": "dyuT", "dyv": "dyvT",
+            "dnu": "dnuT", "dnv": "dnvT",
+            "dtu": "dtuT", "dtv": "dtvT",
+        }
+        op = alias.get(op, op)
+
+        mapping = {
+            # traces
+            "uT": "valT", "vT": "valT",
+            "uV": "valV", "vV": "valV",
+
+            # sauts trace
+            "sautu": "jump", "sautv": "jump",
+
+            # dérivées normales
+            "dnuT": "dnT", "dnvT": "dnT",
+            "dnuV": "dnV", "dnvV": "dnV",
+            "sautdnu": "jump_dn", "sautdnv": "jump_dn",
+
+            # dérivées cartésiennes
+            "dxuT": "dxT", "dxvT": "dxT",
+            "dxuV": "dxV", "dxvV": "dxV",
+            "dyuT": "dyT", "dyvT": "dyT",
+            "dyuV": "dyV", "dyvV": "dyV",
+
+            # dérivées tangentielles (t orientée suivant T)
+            "dtuT": "dtT", "dtvT": "dtT",
+            "dtuV": "dtV", "dtvV": "dtV",
+            "sautdtu": "jump_dt", "sautdtv": "jump_dt",
+
+            # flux vectoriel scalaire*normale (vecteur 2D)
+            "uTnT": "fluxT", "vTnT": "fluxT",
+            "uVnV": "fluxV", "vVnV": "fluxV",
+            "sautDGu": "jump_flux", "sautDGv": "jump_flux",
+        }
+        if op not in mapping:
+            raise ValueError(
+                f"Opérateur inconnu : {op}\n"
+                f"Opérateurs supportés : {sorted(mapping.keys())}"
+            )
+        return mapping[op]
+
+    def _zeros_like(ref):
+        return np.zeros_like(ref, dtype=dtype)
+
+    def _build_op(op_str,
+                  phiT, dxT, dyT, dnT, dtT, fluxT,
+                  phiV, dxV, dyV, dnV, dtV, fluxV):
+        """
+        Retourne (OP_T, OP_V) où :
+          OP_T multiplie les ddl de T
+          OP_V multiplie les ddl de V
+        Chaque OP est soit (Nloc,Nq) (scalaire) soit (2,Nloc,Nq) (vectoriel).
+        """
+        kind = _op_kind(op_str)
+
+        # Références de zéros (scalaire / vectoriel)
+        zS = _zeros_like(phiT)
+        zV = _zeros_like(fluxT)
+
+        if kind == "valT":       return phiT, zS
+        if kind == "valV":       return zS,  phiV
+        if kind == "jump":       return phiT, -phiV
+
+        if kind == "dxT":        return dxT, zS
+        if kind == "dxV":        return zS,  dxV
+        if kind == "dyT":        return dyT, zS
+        if kind == "dyV":        return zS,  dyV
+
+        if kind == "dnT":        return dnT, zS
+        if kind == "dnV":        return zS,  dnV
+        if kind == "jump_dn":    return dnT, dnV     # + côté V (normale sortante V)
+
+        if kind == "dtT":        return dtT, zS
+        if kind == "dtV":        return zS,  dtV
+        if kind == "jump_dt":    return dtT, -dtV    # t orientée suivant T
+
+        if kind == "fluxT":      return fluxT, zV
+        if kind == "fluxV":      return zV,    fluxV
+        if kind == "jump_flux":  return fluxT, fluxV # uT*nT + uV*nV
+
+        raise RuntimeError("Cas non géré (ne devrait pas arriver).")
+
+    def _block_from_ops(opV, opU, weight, edge_length):
+        """
+        Construit le bloc (Nloc x Nloc) :
+            edge_length * ∫ opV_i(q) * weight(q) * opU_j(q) dq
+        Si opV/opU sont vectoriels (2,...), on fait un dot produit.
+        """
+        if opV.ndim != opU.ndim:
+            raise ValueError("Incompatibilité scalaire/vectoriel entre operatorv et operatoru.")
+
+        if opV.ndim == 2:
+            # scalaire : (Nloc,Nq) @ (Nq,Nloc)
+            return edge_length * (opV * weight[None, :]) @ opU.T
+
+        if opV.ndim == 3 and opV.shape[0] == 2:
+            # vectoriel 2D : somme des composantes
+            M = np.zeros((opV.shape[1], opU.shape[1]), dtype=dtype)
+            for k in range(2):
+                M += (opV[k] * weight[None, :]) @ opU[k].T
+            return edge_length * M
+
+        raise ValueError("Format d'opérateur non supporté (attendu scalaire ou vectoriel 2D).")
+
+    # ------------------------------------------------------------
+    # Données maillage / pré-calculs référence
+    # ------------------------------------------------------------
+    wq, xq, yq, Phi_val, Phi_dxhat, Phi_dyhat = precompute_face_ref(ordre, dtype=dtype)
+    wq = np.asarray(wq)
+
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+    points = mesh.points[:, :2]
+    NT = triangles.shape[0]
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+
+    # Connectivité globale (CG ou DG)
+    LoctoGlob = loc_to_glob_general(mesh, ordre, methode)
+    Nglob = int(np.max(LoctoGlob)) + 1
+
+    # Voisinage (faces internes)
+    neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
+
+    # Nombre de faces internes (comptées une fois)
+    n_faces_int = 0
+    for T in range(NT):
+        for F in range(3):
+            V = neighbors[T, F]
+            if V >= 0:
+                n_faces_int += 1
+
+    nnz_est = max(1, 4 * n_faces_int * Nloc * Nloc)
+    A = COOMatrix(Nglob, Nglob, nnz_est)
+
+    # Buffers
+    Nq = wq.size
+    xT = np.empty(Nq, dtype=float)
+    yT = np.empty(Nq, dtype=float)
+    xV = np.empty(Nq, dtype=float)
+    yV = np.empty(Nq, dtype=float)
+
+    dxT = np.empty((Nloc, Nq), dtype=dtype)
+    dyT = np.empty((Nloc, Nq), dtype=dtype)
+    dxV = np.empty((Nloc, Nq), dtype=dtype)
+    dyV = np.empty((Nloc, Nq), dtype=dtype)
+
+    # ------------------------------------------------------------
+    # Boucle faces internes
+    # ------------------------------------------------------------
+    face_nodes = ((1, 2), (2, 0), (0, 1))  # en indices locaux de sommets
+
+    for T in range(NT):
+        i0, i1, i2 = triangles[T]
+        A0 = points[i0]
+        A1 = points[i1]
+        A2 = points[i2]
+
+        JT = np.column_stack((A1 - A0, A2 - A0))
+        JinvT = np.linalg.inv(JT)
+
+        for F in range(3):
+            V = neighbors[T, F]
+            if V < 0:
+                continue
+
+            FV = neighbor_faces[T, F]
+            j0, j1, j2 = triangles[V]
+            B0 = points[j0]
+            B1 = points[j1]
+            B2 = points[j2]
+
+            JV = np.column_stack((B1 - B0, B2 - B0))
+            JinvV = np.linalg.inv(JV)
+
+            # Longueur physique de la face (prise côté T)
+            a_loc, b_loc = face_nodes[F]
+            nodes_T = (triangles[T][a_loc], triangles[T][b_loc])
+            edge_vec = points[nodes_T[1]] - points[nodes_T[0]]
+            edge_length = np.linalg.norm(edge_vec)
+
+            # Normales sortantes
+            nT = calcul_normale(A0, A1, A2, F)
+            nV_geom = calcul_normale(B0, B1, B2, FV)
+            # on force nV opposée à nT (robuste)
+            nV = -nV_geom if (nV_geom[0]*nT[0] + nV_geom[1]*nT[1]) > 0 else nV_geom
+
+            # Tangente orientée suivant T
+            t = np.array([-nT[1], nT[0]], dtype=float)
+
+            # Points physiques côté T (référence face F)
+            xT[:] = A0[0] + xq[F, :] * (A1[0] - A0[0]) + yq[F, :] * (A2[0] - A0[0])
+            yT[:] = A0[1] + xq[F, :] * (A1[1] - A0[1]) + yq[F, :] * (A2[1] - A0[1])
+
+            # Points physiques côté V (référence face FV) pour détecter orientation
+            xV[:] = B0[0] + xq[FV, :] * (B1[0] - B0[0]) + yq[FV, :] * (B2[0] - B0[0])
+            yV[:] = B0[1] + xq[FV, :] * (B1[1] - B0[1]) + yq[FV, :] * (B2[1] - B0[1])
+
+            err_same = np.max(np.abs(xT - xV)) + np.max(np.abs(yT - yV))
+            err_rev  = np.max(np.abs(xT - xV[::-1])) + np.max(np.abs(yT - yV[::-1]))
+            reverse_V = (err_rev < err_same)
+
+            # Bases sur la face (référence)
+            phiT = Phi_val[F, :, :]             # (Nloc,Nq)
+            dphxT = Phi_dxhat[F, :, :]
+            dphyT = Phi_dyhat[F, :, :]
+
+            phiV = Phi_val[FV, :, :]
+            dphxV = Phi_dxhat[FV, :, :]
+            dphyV = Phi_dyhat[FV, :, :]
+
+            if reverse_V:
+                phiV = phiV[:, ::-1]
+                dphxV = dphxV[:, ::-1]
+                dphyV = dphyV[:, ::-1]
+
+            # Gradients physiques
+            dxT[:, :] = JinvT[0, 0] * dphxT + JinvT[1, 0] * dphyT
+            dyT[:, :] = JinvT[0, 1] * dphxT + JinvT[1, 1] * dphyT
+
+            dxV[:, :] = JinvV[0, 0] * dphxV + JinvV[1, 0] * dphyV
+            dyV[:, :] = JinvV[0, 1] * dphxV + JinvV[1, 1] * dphyV
+
+            # Dérivées normales/tangentielles
+            dnT = nT[0] * dxT + nT[1] * dyT
+            dnV = nV[0] * dxV + nV[1] * dyV
+
+            dtT = t[0] * dxT + t[1] * dyT
+            dtV = t[0] * dxV + t[1] * dyV  # t orientée suivant T (ta convention)
+
+            # Flux vectoriel scalaire*normale
+            fluxT = np.stack((nT[0] * phiT, nT[1] * phiT), axis=0)  # (2,Nloc,Nq)
+            fluxV = np.stack((nV[0] * phiV, nV[1] * phiV), axis=0)
+
+            # Coefficient sur la face (évalué aux points xT,yT)
+            if callable(coef):
+                cq = np.asarray(coef(xT, yT), dtype=dtype)
+            else:
+                cq = np.asarray(coef, dtype=dtype)
+
+            if cq.ndim == 0:
+                cq = cq * np.ones_like(wq, dtype=dtype)
+
+            weight = (wq.astype(dtype) * cq)  # (Nq,)
+
+            # Opérateurs : (OP_T, OP_V)
+            opu_T, opu_V = _build_op(operatoru,
+                                     phiT, dxT, dyT, dnT, dtT, fluxT,
+                                     phiV, dxV, dyV, dnV, dtV, fluxV)
+            opv_T, opv_V = _build_op(operatorv,
+                                     phiT, dxT, dyT, dnT, dtT, fluxT,
+                                     phiV, dxV, dyV, dnV, dtV, fluxV)
+
+            # 4 blocs
+            M_TT = _block_from_ops(opv_T, opu_T, weight, edge_length)
+            M_TV = _block_from_ops(opv_T, opu_V, weight, edge_length)
+            M_VT = _block_from_ops(opv_V, opu_T, weight, edge_length)
+            M_VV = _block_from_ops(opv_V, opu_V, weight, edge_length)
+
+            # Insertion globale
+            rows_T = LoctoGlob[T]
+            rows_V = LoctoGlob[V]
+            cols_T = LoctoGlob[T]
+            cols_V = LoctoGlob[V]
+
+            _insert_block(A, rows_T, cols_T, M_TT)
+            _insert_block(A, rows_T, cols_V, M_TV)
+            _insert_block(A, rows_V, cols_T, M_VT)
+            _insert_block(A, rows_V, cols_V, M_VV)
+
+    return A
+
+
+
+def assemble_skeleton_par_face(mesh, ordre, coef,
+                      operatoru="sautu", operatorv="sautv",
+                      methode="DG", dtype=np.complex128):
+    """
+    Assemble une matrice de squelette (faces internes uniquement) :
+
+        A_ij += ∫_{F_int} coef(x,y) * OPV(v_i) * OPU(u_j) ds
+
+    Convention :
+      - T = élément courant
+      - V = élément voisin
+      - nT = normale sortante de T sur la face
+      - nV = normale sortante de V sur la face commune (opposée à nT)
+      - t = tangente orientée suivant T : t = (-nT_y, nT_x)
+        et on utilise CE MÊME t pour les opérateurs côté V quand nécessaire.
+
+    Opérateurs supportés (pour u et v, avec u↔v) :
+      - Traces : uT, uV ; vT, vV
+      - Sauts : sautu = uT - uV ; sautv = vT - vV
+      - Dérivées normales : dnuT, dnuV ; dnvT, dnvV
+      - Saut normal : sautdnu = dnuT + dnuV ; sautdnv = dnvT + dnvV
+      - Dérivées cartésiennes : dxuT, dxuV, dyuT, dyuV (et idem v)
+      - Dérivées tangentielles (t orientée suivant T) :
+            dtuT, dtuV ; dtvT, dtvV
+            sautdtu = dtuT - dtuV ; sautdtv = dtvT - dtvV
+      - Flux vectoriel scalaire*normale :
+            uTnT = uT * nT (vecteur 2D), uVnV = uV * nV
+            sautDGu = uT*nT + uV*nV (vecteur 2D)
+        (et idem : vTnT, vVnV, sautDGv)
+        Si OPV et OPU sont vectoriels, on contracte par produit scalaire (dot).
+
+    Notes :
+      - On traite chaque face interne UNE fois (T < V).
+      - L’alignement des points de quadrature entre T et V est géré automatiquement
+        (on inverse l’ordre des points côté V si nécessaire).
+    """
+    # --- Alias pratique "sautDG"
+    if operatoru == "sautDG":
+        operatoru = "sautDGu"
+    if operatorv == "sautDG":
+        operatorv = "sautDGv"
+    # ------------------------------------------------------------
+    # Helpers locaux
+    # ------------------------------------------------------------
+    def _insert_block(Mat, rows_glob, cols_glob, Mblock):
+        """Insertion rapide d'un bloc (Nloc x Nloc) dans Mat."""
+        rr = np.repeat(rows_glob, cols_glob.size)
+        cc = np.tile(cols_glob, rows_glob.size)
+        vv = Mblock.reshape(-1)
+        Mat.ajout_rapide(rr, cc, vv.size, vv)
+
+    def _op_kind(op: str) -> str:
+        """Normalise les alias u/v -> 'kind' indépendant de la variable."""
+        # Synonymes pratiques : on interprète sans côté comme côté T
+        alias = {
+            "u": "uT", "v": "vT",
+            "dxu": "dxuT", "dxv": "dxvT",
+            "dyu": "dyuT", "dyv": "dyvT",
+            "dnu": "dnuT", "dnv": "dnvT",
+            "dtu": "dtuT", "dtv": "dtvT",
+        }
+        op = alias.get(op, op)
+
+        mapping = {
+            # traces
+            "uT": "valT", "vT": "valT",
+            "uV": "valV", "vV": "valV",
+
+            # sauts trace
+            "sautu": "jump", "sautv": "jump",
+
+            # dérivées normales
+            "dnuT": "dnT", "dnvT": "dnT",
+            "dnuV": "dnV", "dnvV": "dnV",
+            "sautdnu": "jump_dn", "sautdnv": "jump_dn",
+
+            # dérivées cartésiennes
+            "dxuT": "dxT", "dxvT": "dxT",
+            "dxuV": "dxV", "dxvV": "dxV",
+            "dyuT": "dyT", "dyvT": "dyT",
+            "dyuV": "dyV", "dyvV": "dyV",
+
+            # dérivées tangentielles (t orientée suivant T)
+            "dtuT": "dtT", "dtvT": "dtT",
+            "dtuV": "dtV", "dtvV": "dtV",
+            "sautdtu": "jump_dt", "sautdtv": "jump_dt",
+
+            # flux vectoriel scalaire*normale (vecteur 2D)
+            "uTnT": "fluxT", "vTnT": "fluxT",
+            "uVnV": "fluxV", "vVnV": "fluxV",
+            "sautDGu": "jump_flux", "sautDGv": "jump_flux",
+        }
+        if op not in mapping:
+            raise ValueError(
+                f"Opérateur inconnu : {op}\n"
+                f"Opérateurs supportés : {sorted(mapping.keys())}"
+            )
+        return mapping[op]
+
+    def _zeros_like(ref):
+        return np.zeros_like(ref, dtype=dtype)
+
+    def _build_op(op_str,
+                  phiT, dxT, dyT, dnT, dtT, fluxT,
+                  phiV, dxV, dyV, dnV, dtV, fluxV):
+        """
+        Retourne (OP_T, OP_V) où :
+          OP_T multiplie les ddl de T
+          OP_V multiplie les ddl de V
+        Chaque OP est soit (Nloc,Nq) (scalaire) soit (2,Nloc,Nq) (vectoriel).
+        """
+        kind = _op_kind(op_str)
+
+        # Références de zéros (scalaire / vectoriel)
+        zS = _zeros_like(phiT)
+        zV = _zeros_like(fluxT)
+
+        if kind == "valT":       return phiT, zS
+        if kind == "valV":       return zS,  phiV
+        if kind == "jump":       return phiT, -phiV
+
+        if kind == "dxT":        return dxT, zS
+        if kind == "dxV":        return zS,  dxV
+        if kind == "dyT":        return dyT, zS
+        if kind == "dyV":        return zS,  dyV
+
+        if kind == "dnT":        return dnT, zS
+        if kind == "dnV":        return zS,  dnV
+        if kind == "jump_dn":    return dnT, dnV     # + côté V (normale sortante V)
+
+        if kind == "dtT":        return dtT, zS
+        if kind == "dtV":        return zS,  dtV
+        if kind == "jump_dt":    return dtT, -dtV    # t orientée suivant T
+
+        if kind == "fluxT":      return fluxT, zV
+        if kind == "fluxV":      return zV,    fluxV
+        if kind == "jump_flux":  return fluxT, fluxV # uT*nT + uV*nV
+
+        raise RuntimeError("Cas non géré (ne devrait pas arriver).")
+
+    def _block_from_ops(opV, opU, weight, edge_length):
+        """
+        Construit le bloc (Nloc x Nloc) :
+            edge_length * ∫ opV_i(q) * weight(q) * opU_j(q) dq
+        Si opV/opU sont vectoriels (2,...), on fait un dot produit.
+        """
+        if opV.ndim != opU.ndim:
+            raise ValueError("Incompatibilité scalaire/vectoriel entre operatorv et operatoru.")
+
+        if opV.ndim == 2:
+            # scalaire : (Nloc,Nq) @ (Nq,Nloc)
+            return edge_length * (opV * weight[None, :]) @ opU.T
+
+        if opV.ndim == 3 and opV.shape[0] == 2:
+            # vectoriel 2D : somme des composantes
+            M = np.zeros((opV.shape[1], opU.shape[1]), dtype=dtype)
+            for k in range(2):
+                M += (opV[k] * weight[None, :]) @ opU[k].T
+            return edge_length * M
+
+        raise ValueError("Format d'opérateur non supporté (attendu scalaire ou vectoriel 2D).")
+
+    # ------------------------------------------------------------
+    # Données maillage / pré-calculs référence
+    # ------------------------------------------------------------
+    wq, xq, yq, Phi_val, Phi_dxhat, Phi_dyhat = precompute_face_ref(ordre, dtype=dtype)
+    wq = np.asarray(wq)
+
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+    points = mesh.points[:, :2]
+    NT = triangles.shape[0]
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+
+    # Connectivité globale (CG ou DG)
+    LoctoGlob = loc_to_glob_general(mesh, ordre, methode)
+    Nglob = int(np.max(LoctoGlob)) + 1
+
+    # Voisinage (faces internes)
+    neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
+
+    # Nombre de faces internes (comptées une fois)
+    n_faces_int = 0
+    for T in range(NT):
+        for F in range(3):
+            V = neighbors[T, F]
+            if V >= 0 and T < V:  # on compte chaque face interne une fois (T < V)
+                n_faces_int += 1
+
+    nnz_est = max(1, 4 * n_faces_int * Nloc * Nloc)
+    A = COOMatrix(Nglob, Nglob, nnz_est)
+
+    # Buffers
+    Nq = wq.size
+    xT = np.empty(Nq, dtype=float)
+    yT = np.empty(Nq, dtype=float)
+    xV = np.empty(Nq, dtype=float)
+    yV = np.empty(Nq, dtype=float)
+
+    dxT = np.empty((Nloc, Nq), dtype=dtype)
+    dyT = np.empty((Nloc, Nq), dtype=dtype)
+    dxV = np.empty((Nloc, Nq), dtype=dtype)
+    dyV = np.empty((Nloc, Nq), dtype=dtype)
+
+    # ------------------------------------------------------------
+    # Boucle faces internes
+    # ------------------------------------------------------------
+    face_nodes = ((1, 2), (2, 0), (0, 1))  # en indices locaux de sommets
+
+    for T in range(NT):
+        i0, i1, i2 = triangles[T]
+        A0 = points[i0]
+        A1 = points[i1]
+        A2 = points[i2]
+
+        JT = np.column_stack((A1 - A0, A2 - A0))
+        JinvT = np.linalg.inv(JT)
+
+        for F in range(3):
+            V = neighbors[T, F]
+            if V < 0:
+                continue
+            if T > V:
+                continue  # on traite chaque face interne une fois (T < V)
+
+            FV = neighbor_faces[T, F]
+            j0, j1, j2 = triangles[V]
+            B0 = points[j0]
+            B1 = points[j1]
+            B2 = points[j2]
+
+            JV = np.column_stack((B1 - B0, B2 - B0))
+            JinvV = np.linalg.inv(JV)
+
+            # Longueur physique de la face (prise côté T)
+            a_loc, b_loc = face_nodes[F]
+            nodes_T = (triangles[T][a_loc], triangles[T][b_loc])
+            edge_vec = points[nodes_T[1]] - points[nodes_T[0]]
+            edge_length = np.linalg.norm(edge_vec)
+
+            # Normales sortantes
+            nT = calcul_normale(A0, A1, A2, F)
+            nV_geom = calcul_normale(B0, B1, B2, FV)
+            # on force nV opposée à nT (robuste)
+            nV = -nV_geom if (nV_geom[0]*nT[0] + nV_geom[1]*nT[1]) > 0 else nV_geom
+
+            # Tangente orientée suivant T
+            t = np.array([-nT[1], nT[0]], dtype=float)
+
+            # Points physiques côté T (référence face F)
+            xT[:] = A0[0] + xq[F, :] * (A1[0] - A0[0]) + yq[F, :] * (A2[0] - A0[0])
+            yT[:] = A0[1] + xq[F, :] * (A1[1] - A0[1]) + yq[F, :] * (A2[1] - A0[1])
+
+            # Points physiques côté V (référence face FV) pour détecter orientation
+            xV[:] = B0[0] + xq[FV, :] * (B1[0] - B0[0]) + yq[FV, :] * (B2[0] - B0[0])
+            yV[:] = B0[1] + xq[FV, :] * (B1[1] - B0[1]) + yq[FV, :] * (B2[1] - B0[1])
+
+            err_same = np.max(np.abs(xT - xV)) + np.max(np.abs(yT - yV))
+            err_rev  = np.max(np.abs(xT - xV[::-1])) + np.max(np.abs(yT - yV[::-1]))
+            reverse_V = (err_rev < err_same)
+
+            # Bases sur la face (référence)
+            phiT = Phi_val[F, :, :]             # (Nloc,Nq)
+            dphxT = Phi_dxhat[F, :, :]
+            dphyT = Phi_dyhat[F, :, :]
+
+            phiV = Phi_val[FV, :, :]
+            dphxV = Phi_dxhat[FV, :, :]
+            dphyV = Phi_dyhat[FV, :, :]
+
+            if reverse_V:
+                phiV = phiV[:, ::-1]
+                dphxV = dphxV[:, ::-1]
+                dphyV = dphyV[:, ::-1]
+
+            # Gradients physiques
+            dxT[:, :] = JinvT[0, 0] * dphxT + JinvT[1, 0] * dphyT
+            dyT[:, :] = JinvT[0, 1] * dphxT + JinvT[1, 1] * dphyT
+
+            dxV[:, :] = JinvV[0, 0] * dphxV + JinvV[1, 0] * dphyV
+            dyV[:, :] = JinvV[0, 1] * dphxV + JinvV[1, 1] * dphyV
+
+            # Dérivées normales/tangentielles
+            dnT = nT[0] * dxT + nT[1] * dyT
+            dnV = nV[0] * dxV + nV[1] * dyV
+
+            dtT = t[0] * dxT + t[1] * dyT
+            dtV = t[0] * dxV + t[1] * dyV  # t orientée suivant T (ta convention)
+
+            # Flux vectoriel scalaire*normale
+            fluxT = np.stack((nT[0] * phiT, nT[1] * phiT), axis=0)  # (2,Nloc,Nq)
+            fluxV = np.stack((nV[0] * phiV, nV[1] * phiV), axis=0)
+
+            # Coefficient sur la face (évalué aux points xT,yT)
+            if callable(coef):
+                cq = np.asarray(coef(xT, yT), dtype=dtype)
+            else:
+                cq = np.asarray(coef, dtype=dtype)
+
+            if cq.ndim == 0:
+                cq = cq * np.ones_like(wq, dtype=dtype)
+
+            weight = (wq.astype(dtype) * cq)  # (Nq,)
+
+            # Opérateurs : (OP_T, OP_V)
+            opu_T, opu_V = _build_op(operatoru,
+                                     phiT, dxT, dyT, dnT, dtT, fluxT,
+                                     phiV, dxV, dyV, dnV, dtV, fluxV)
+            opv_T, opv_V = _build_op(operatorv,
+                                     phiT, dxT, dyT, dnT, dtT, fluxT,
+                                     phiV, dxV, dyV, dnV, dtV, fluxV)
+
+            # 4 blocs
+            M_TT = _block_from_ops(opv_T, opu_T, weight, edge_length)
+            M_TV = _block_from_ops(opv_T, opu_V, weight, edge_length)
+            M_VT = _block_from_ops(opv_V, opu_T, weight, edge_length)
+            M_VV = _block_from_ops(opv_V, opu_V, weight, edge_length)
+
+            # Insertion globale
+            rows_T = LoctoGlob[T]
+            rows_V = LoctoGlob[V]
+            cols_T = LoctoGlob[T]
+            cols_V = LoctoGlob[V]
+
+            _insert_block(A, rows_T, cols_T, M_TT)
+            _insert_block(A, rows_T, cols_V, M_TV)
+            _insert_block(A, rows_V, cols_T, M_VT)
+            _insert_block(A, rows_V, cols_V, M_VV)
+
+    return A

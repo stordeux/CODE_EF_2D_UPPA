@@ -89,7 +89,9 @@ from .assemblage_general import (
     assemble_surface,
     assemble_rhs_volume,
     assemble_rhs_surface,
-    make_vector_field
+    make_vector_field,
+    assemble_skeleton_par_element,
+    assemble_skeleton_par_face
 )
 from .methode_hyperbolique import (
     assemble_hyperbo
@@ -193,6 +195,8 @@ __all__ = [
     "assemble_surface",
     "assemble_rhs_volume",
     "assemble_rhs_surface",
-    "make_vector_field"
+    "make_vector_field",
+    "assemble_skeleton_par_element",
+    "assemble_skeleton_par_face"
     ]
 __version__ = "0.0.1"
