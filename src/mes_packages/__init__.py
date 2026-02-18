@@ -87,7 +87,9 @@ from .assemblage_general import (
     assemble_volume,
     precompute_face_ref,
     assemble_surface,
-    assemble_rhs_volume
+    assemble_rhs_volume,
+    assemble_rhs_surface,
+    make_vector_field
 )
 from .methode_hyperbolique import (
     assemble_hyperbo
@@ -189,6 +191,8 @@ __all__ = [
     "assemble_volume",
     "precompute_face_ref",
     "assemble_surface",
-    "assemble_rhs_volume"
+    "assemble_rhs_volume",
+    "assemble_rhs_surface",
+    "make_vector_field"
     ]
 __version__ = "0.0.1"

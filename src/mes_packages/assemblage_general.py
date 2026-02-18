@@ -505,3 +505,171 @@ def assemble_rhs_volume(mesh, ordre, func, operatorv="v", methode="CG"):
             F[iglob] += Floc[iloc]
 
     return F
+
+
+
+#############################################################################
+###   Terme sous \int_{\Omega} f Op(v) dx    ################################
+#############################################################################
+
+
+def assemble_rhs_surface(mesh, ordre, f, op_f="f", op_v="v", methode="CG", domaine="all", dtype=np.complex128):
+    """
+    Assemble un second membre frontière :
+
+        F_i = ∫_{∂Ω_domaine}  OP_F(f) * OP_V(v_i) ds
+
+    avec
+
+        op_f ∈ {"f","f.n","f.t","f.ex","f.ey"}
+        op_v ∈ {"v","dnv","dtv","dxv","dyv"}
+
+    - f peut être scalaire (si op_f="f")
+    - sinon f doit être vectoriel : f(x,y) -> (fx,fy)
+
+    Paramètres
+    ----------
+    mesh : meshio.Mesh
+    ordre : int
+    f : callable
+    op_f : str   opérateur appliqué à f
+    op_v : str   opérateur appliqué à v
+    methode : "CG" ou "DG"
+    domaine : "all" ou nom BC
+    """
+
+    # --- Pré-calcul référence (exactement comme assemble_surface)
+    wq, xq, yq, Phi_val, Phi_dxhat, Phi_dyhat = precompute_face_ref(ordre, dtype=dtype)
+
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+
+    # --- Connectivité locale/globale
+    LoctoGlob = loc_to_glob_general(mesh, ordre, methode)
+    Nglob = int(np.max(LoctoGlob)) + 1
+
+    # --- Voisinage + BC
+    neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name = \
+        build_neighborhood_structure_with_bc(mesh)
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    Fglob = np.zeros(Nglob, dtype=dtype)
+
+    # --- Buffers (évite realloc)
+    x_phys = np.empty_like(xq[0])
+    y_phys = np.empty_like(yq[0])
+
+    Phi_dx = np.empty((Nloc, len(wq)), dtype=dtype)
+    Phi_dy = np.empty((Nloc, len(wq)), dtype=dtype)
+    Phi_dn = np.empty((Nloc, len(wq)), dtype=dtype)
+    Phi_dt = np.empty((Nloc, len(wq)), dtype=dtype)
+
+    for T, (i0, i1, i2) in enumerate(triangles):
+
+        A0 = points[i0]
+        A1 = points[i1]
+        A2 = points[i2]
+
+        # Jacobien affine
+        J = np.column_stack((A1 - A0, A2 - A0))
+        Jinv = np.linalg.inv(J)
+
+        for F in range(3):
+
+            code = neighbors[T, F]
+
+            if domaine == "all":
+                is_boundary = (code <= -1)
+            else:
+                is_boundary = (code == reference_BC(domaine))
+
+            if not is_boundary:
+                continue
+
+            # --- longueur de face
+            face_nodes = ((i1, i2), (i2, i0), (i0, i1))
+            edge_vec = points[face_nodes[F][1]] - points[face_nodes[F][0]]
+            edge_length = np.linalg.norm(edge_vec)
+
+            # --- normale extérieure (ta routine validée)
+            n = calcul_normale(A0, A1, A2, F)
+            tx, ty = -n[1], n[0]   # tangente orientée
+
+            # --- points physiques de quadrature
+            x_phys[:] = A0[0] + xq[F] * (A1[0] - A0[0]) + yq[F] * (A2[0] - A0[0])
+            y_phys[:] = A0[1] + xq[F] * (A1[1] - A0[1]) + yq[F] * (A2[1] - A0[1])
+
+            fq = f(x_phys, y_phys)
+
+            # --------------------------------------------------
+            #   OPÉRATEUR SUR f
+            # --------------------------------------------------
+            if op_f == "f":
+                fq_eff = np.asarray(fq, dtype=dtype)
+
+            else:
+                fx, fy = fq  # f doit être vectoriel
+
+                if op_f == "f.n":
+                    fq_eff = fx * n[0] + fy * n[1]
+
+                elif op_f == "f.t":
+                    fq_eff = fx * tx + fy * ty
+
+                elif op_f == "f.ex":
+                    fq_eff = fx
+
+                elif op_f == "f.ey":
+                    fq_eff = fy
+
+                else:
+                    raise ValueError(f"Unknown op_f '{op_f}'")
+
+                fq_eff = np.asarray(fq_eff, dtype=dtype)
+
+            # --------------------------------------------------
+            #   DÉRIVÉES PHYSIQUES DES φ
+            # --------------------------------------------------
+            need_grad = op_v in ("dxv", "dyv", "dnv", "dtv")
+
+            if need_grad:
+                Phi_dx[:, :] = Jinv[0, 0] * Phi_dxhat[F] + Jinv[1, 0] * Phi_dyhat[F]
+                Phi_dy[:, :] = Jinv[0, 1] * Phi_dxhat[F] + Jinv[1, 1] * Phi_dyhat[F]
+
+            if op_v == "v":
+                PhiV = Phi_val[F]
+
+            elif op_v == "dxv":
+                PhiV = Phi_dx
+
+            elif op_v == "dyv":
+                PhiV = Phi_dy
+
+            elif op_v == "dnv":
+                Phi_dn[:, :] = n[0] * Phi_dx + n[1] * Phi_dy
+                PhiV = Phi_dn
+
+            elif op_v == "dtv":
+                Phi_dt[:, :] = tx * Phi_dx + ty * Phi_dy
+                PhiV = Phi_dt
+
+            else:
+                raise ValueError(f"Unknown op_v '{op_v}'")
+
+            # --------------------------------------------------
+            #   ASSEMBLAGE
+            # --------------------------------------------------
+            W = wq * fq_eff * edge_length
+
+            for i_loc in range(Nloc):
+                ig = int(LoctoGlob[T, i_loc])
+                if ig >= 0:
+                    Fglob[ig] += np.sum(W * PhiV[i_loc])
+
+    return Fglob
+
+def make_vector_field(fx, fy):
+    def fvec(x, y):
+        return fx(x, y), fy(x, y)
+    return fvec

@@ -311,7 +311,7 @@ def test_masse_variable_DG():
 @pytest.mark.parametrize("ordre", [4,5])
 def test_mixte_xy_DG(ordre):
 
-    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
+    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.1)
 
     # coefficient variable
     rho = lambda x, y: x**2 + y**2
