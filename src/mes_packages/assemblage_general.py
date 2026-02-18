@@ -215,3 +215,201 @@ def assemble_volume(mesh, ordre, func, operatoru, operatorv, methode="CG"):
         insert(A, T, Mloc, ordre, LoctoGlob)
 
     return A
+
+#####################################################################################
+####### Assemblage symbolique des frontières ######################################## #####################################################################################
+
+import numpy as np
+
+def precompute_face_ref(ordre: int, ordreq: int | None = None, dtype=np.complex128):
+    """
+    Pré-calcul sur le triangle de référence des quantités nécessaires aux intégrales de frontière.
+
+    La fonction construit, pour chacune des 3 faces :
+        - les points et poids de quadrature 1D sur [0,1],
+        - les valeurs des fonctions de base locales restreintes à la face,
+        - leurs dérivées dans les coordonnées de référence.
+
+    Ces tableaux sont indépendants du maillage et peuvent être réutilisés pour tous
+    les éléments lors de l’assemblage (CG ou DG), ce qui évite de recalculer les bases
+    à chaque boucle élément.
+
+    Paramètres
+    ----------
+    ordre : int
+        Ordre polynomial de l'élément fini.
+    ordreq : int, optionnel
+        Ordre de quadrature (par défaut : 2*ordre + 2).
+    dtype : type numpy
+        Type de stockage des tableaux.
+
+    Retour
+    ------
+    w : (Nq,)
+        Poids de quadrature paramétriques (à multiplier par la longueur physique).
+    xhat, yhat : (3, Nq)
+        Coordonnées des points de quadrature sur chaque face du triangle de référence.
+    phi : (3, Nloc, Nq)
+        Valeurs des fonctions de base sur les faces.
+    dphidxh, dphidyh : (3, Nloc, Nq)
+        Dérivées des fonctions de base dans le repère de référence.
+    """
+    if ordreq is None:
+        ordreq = 2 * ordre + 2
+
+    # Quadrature Gauss-Legendre sur t ∈ [0,1]
+    wi, xi = np.polynomial.legendre.leggauss(ordreq)   # sur [-1,1]
+    t = 0.5 * (xi + 1.0)                               # -> [0,1]
+    w = 0.5 * wi                                       # poids pour dt
+
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+    Nq = t.size
+
+    # Sommets du triangle de référence
+    A = np.array([[0.0, 0.0],
+                  [1.0, 0.0],
+                  [0.0, 1.0]])
+
+    # Faces locales : face f = segment entre A[i0] et A[i1]
+    # (ici : face 0 = (1,2), face 1 = (0,2), face 2 = (0,1))
+    faces = np.array([[1, 2],
+                      [0, 2],
+                      [0, 1]], dtype=int)
+
+    # Coordonnées (xhat,yhat) des points de quadrature sur chaque face
+    xhat = np.empty((3, Nq), dtype=float)
+    yhat = np.empty((3, Nq), dtype=float)
+
+    for f, (i0, i1) in enumerate(faces):
+        P0, P1 = A[i0], A[i1]
+        # Paramétrisation cohérente avec ton code : Xhat(t)=P0*t + P1*(1-t)
+        xhat[f, :] = P0[0] * t + P1[0] * (1.0 - t)
+        yhat[f, :] = P0[1] * t + P1[1] * (1.0 - t)
+
+    # Tenseurs : (face, ddl_local, point_quadrature)
+    phi      = np.empty((3, Nloc, Nq), dtype=dtype)
+    dphidxh  = np.empty((3, Nloc, Nq), dtype=dtype)
+    dphidyh  = np.empty((3, Nloc, Nq), dtype=dtype)
+
+    for m in range(ordre + 1):
+        for n in range(ordre + 1 - m):
+            k = loc2D_to_loc1D(m, n)
+            for f in range(3):
+                xx = xhat[f, :]
+                yy = yhat[f, :]
+                phi[f, k, :]     = base(xx, yy, m, n, ordre)
+                dphidxh[f, k, :] = derivative_base(xx, yy, m, n, ordre, var="x")
+                dphidyh[f, k, :] = derivative_base(xx, yy, m, n, ordre, var="y")
+
+    return w, xhat, yhat, phi, dphidxh, dphidyh
+
+
+
+
+
+def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", domaine = "all"):
+    # Pré-calcul ref face (UNE fois)
+    wq, xq, yq, Phi_val, Phi_dxhat, Phi_dyhat = precompute_face_ref(ordre)
+    Nloc = (ordre + 1) * (ordre + 2) // 2
+
+    # Connectivité CG/DG
+    LoctoGlob = loc_to_glob_general(mesh, ordre, methode)
+    Nglob = int(np.max(LoctoGlob)) + 1
+    NT = mesh.cells_dict["triangle"].shape[0]
+    # Type de frontière :
+    neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name= build_neighborhood_structure_with_bc(mesh)
+
+    A  = COOMatrix(Nglob, Nglob, NT * Nloc * Nloc)
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    # besoin de dx/dy ?
+    need_dx = (operatoru == "dnu") or (operatorv == "dnv") or (operatoru == "dtu") or (operatorv == "dtv")
+    need_dn = (operatoru == "dnu") or (operatorv == "dnv")
+    need_dt = (operatoru == "dtu") or (operatorv == "dtv")
+
+    x_phys = np.empty_like(xq[0, :])
+    y_phys = np.empty_like(yq[0, :])
+    Phi_dx = np.empty_like(Phi_dxhat[0,:,:])
+    Phi_dy = np.empty_like(Phi_dyhat[0,:,:])
+    Phi_dn = np.empty_like(Phi_dxhat[0,:,:])
+    Phi_dt = np.empty_like(Phi_dxhat[0,:,:])    
+    for T, (i0, i1, i2) in enumerate(triangles):
+        for F in range(3):
+            V = neighbors[T, F]
+            if domaine == "all":
+                TEST = V <= -1
+            else:
+                refer = reference_BC(domaine)
+                TEST = V == refer
+            if TEST:   
+                # Vérification du type de frontière à traiter
+                A0 = points[i0]
+                A1 = points[i1]
+                A2 = points[i2]
+                if F == 0:
+                    edge = A2 - A1
+                elif F == 1:
+                    edge = A0 - A2
+                else:  # F == 2
+                    edge = A1 - A0
+                
+                # Calcul de la longueur de la faces pour la pondération quadrature
+                edge_length = np.linalg.norm(edge)
+                
+                # Jacobien affine
+                J = np.column_stack((A1 - A0, A2 - A0))
+                Jinv = np.linalg.inv(J)
+
+                # Points physiques
+                x_phys[:] = A0[0] + xq[F][:]*(A1[0]-A0[0]) + yq[F][:]*(A2[0]-A0[0])
+                y_phys[:] = A0[1] + xq[F][:]*(A1[1]-A0[1]) + yq[F][:]*(A2[1]-A0[1])
+
+                f_q = np.asarray(func(x_phys, y_phys), dtype=np.complex128)
+
+
+                
+                # Dérivées physiques (si nécessaires)
+                if need_dx:
+                    Phi_dx[:, :] = Jinv[0, 0] * Phi_dxhat[F, :, :] + Jinv[1, 0] * Phi_dyhat[F, :, :]  # ∂/∂x
+                    Phi_dy[:, :] = Jinv[0, 1] * Phi_dxhat[F, :, :] + Jinv[1, 1] * Phi_dyhat[F, :, :]  # ∂/∂y
+                if need_dt:
+                    normale =calcul_normale(A0, A1, A2, F)
+                    Phi_dn[:,:] = normale[0]*Phi_dx + normale[1]*Phi_dy 
+                if need_dt:
+                    normale =calcul_normale(A0, A1, A2, F)
+                    Phi_dt[:,:] = -normale[1]*Phi_dx + normale[0]*Phi_dy
+
+
+                # Sélection opérateurs
+                if operatoru == "u":
+                    Phi_u = Phi_val[F,:,:]
+                elif operatoru == "dxu":
+                    Phi_u = Phi_dx[F,:,:]
+                elif operatoru == "dyu":
+                    Phi_u = Phi_dy[F,:,:]
+                elif operatoru == "dnu":
+                    Phi_u = Phi_dn
+                else:
+                    raise ValueError(f"Opérateur inconnu pour u : {operatoru}")
+
+                if operatorv == "v":
+                    Phi_v = Phi_val[F,:,:]
+                elif operatorv == "dxv":
+                    Phi_v = Phi_dx[F,:,:]
+                elif operatorv == "dyv":
+                    Phi_v = Phi_dy[F,:,:]
+                elif operatorv == "dnv":
+                    Phi_v = Phi_dn
+                else:
+                    raise ValueError(f"Opérateur inconnu pour v : {operatorv}")
+
+                # Matrice locale (version “vraie brique” vectorisée)
+                weight = wq * f_q                      # (Nq,)
+                Mloc = edge_length * (Phi_v * weight[None, :]) @ Phi_u.T  # (Nloc,Nloc)
+
+                # Insertion CG/DG
+                insert(A, T, Mloc, ordre, LoctoGlob)
+
+    return A

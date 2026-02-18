@@ -3,6 +3,7 @@ from mes_packages import *
 from mes_packages.assemblage_general import precompute_ref, grad_base_ref, loc_to_glob_general,assemble_volume
 
 mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.025)
+
 ordre = 2
 
 func = lambda x,y: 1
