@@ -10,7 +10,7 @@ print("reference de Fourier",refer)
 
 
 
-func = lambda x, y: 1
+func = lambda x, y: x
 # Assemblage générique
 MAT_1 = assemble_surface(mesh, ordre, func, "u", "v", methode="CG",domaine="FOURIER")
 

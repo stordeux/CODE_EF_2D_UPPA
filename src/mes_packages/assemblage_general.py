@@ -324,7 +324,7 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
     triangles = np.asarray(mesh.cells_dict["triangle"])
 
     # besoin de dx/dy ?
-    need_dx = (operatoru in ("dxu","dnu","dtu") or operatorv in ("dxv","dnv","dtv"))
+    need_dx = (operatoru in ("dxu","dyu","dnu","dtu") or operatorv in ("dxv","dyv","dnv","dtv"))
     need_dn = (operatoru == "dnu") or (operatorv == "dnv")
     need_dt = (operatoru == "dtu") or (operatorv == "dtv")
 
@@ -416,3 +416,92 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
                 insert(A, T, Mloc, ordre, LoctoGlob)
 
     return A
+#############################################################################
+###   Terme sous \int_{\Omega} f Op(v) dx    ################################
+#############################################################################
+
+def assemble_rhs_volume(mesh, ordre, func, operatorv="v", methode="CG"):
+    """
+    Assemble un second membre volumique générique :
+
+        F_i = ∫_Ω f(x,y) * O(v_i) dx
+
+    avec O(v) ∈ { v, ∂x v, ∂y v }.
+
+    operatorv accepté :
+        - "v", "dxv", "dyv"
+        - "fv", "fdxv", "fdyv"  (synonymes)
+
+    Retour
+    ------
+    F : ndarray (Nglob,) complex
+    """
+
+    # Synonymes "fv" -> "v", etc.
+    op_map = {"fv": "v", "fdxv": "dxv", "fdyv": "dyv"}
+    operatorv = op_map.get(operatorv, operatorv)
+
+    # Pré-calcul ref (UNE fois) : exactement comme assemble_volume
+    wq, xq, yq, Phi_val, Phi_dxhat, Phi_dyhat = precompute_ref(ordre)
+    wq = np.asarray(wq)
+    xq = np.asarray(xq)
+    yq = np.asarray(yq)
+
+    # Connectivité CG/DG
+    LoctoGlob = loc_to_glob_general(mesh, ordre, methode)
+    Nglob = int(np.max(LoctoGlob)) + 1
+    F = np.zeros(Nglob, dtype=np.complex128)
+
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    need_dx = (operatorv == "dxv")
+    need_dy = (operatorv == "dyv")
+
+    # Buffers (optionnel mais évite des reallocs)
+    Phi_dx = np.zeros_like(Phi_dxhat)
+    Phi_dy = np.zeros_like(Phi_dyhat)
+
+    for T, (i0, i1, i2) in enumerate(triangles):
+
+        A0 = points[i0]
+        A1 = points[i1]
+        A2 = points[i2]
+
+        # Jacobien affine (même convention que toi)
+        J = np.column_stack((A1 - A0, A2 - A0))
+        detJ = abs(np.linalg.det(J))
+        Jinv = np.linalg.inv(J)
+
+        # Points physiques
+        x_phys = A0[0] + xq*(A1[0]-A0[0]) + yq*(A2[0]-A0[0])
+        y_phys = A0[1] + xq*(A1[1]-A0[1]) + yq*(A2[1]-A0[1])
+
+        f_q = np.asarray(func(x_phys, y_phys), dtype=np.complex128)
+
+        # Dérivées physiques si nécessaire
+        if need_dx:
+            Phi_dx[:, :] = Jinv[0, 0] * Phi_dxhat + Jinv[1, 0] * Phi_dyhat
+        if need_dy:
+            Phi_dy[:, :] = Jinv[0, 1] * Phi_dxhat + Jinv[1, 1] * Phi_dyhat
+
+        # Sélection opérateur test
+        if operatorv == "v":
+            Phi_test = Phi_val
+        elif operatorv == "dxv":
+            Phi_test = Phi_dx
+        elif operatorv == "dyv":
+            Phi_test = Phi_dy
+        else:
+            raise ValueError(f"Opérateur inconnu pour v : {operatorv}")
+
+        # Intégration locale vectorisée :
+        # Floc[i] = detJ * Σ_q wq[q] * f_q[q] * Phi_test[i,q]
+        weight = wq * f_q                      # (Nq,)
+        Floc = detJ * (Phi_test * weight[None, :]).sum(axis=1)  # (Nloc,)
+
+        # Insertion CG/DG via LoctoGlob
+        for iloc, iglob in enumerate(LoctoGlob[T]):
+            F[iglob] += Floc[iloc]
+
+    return F

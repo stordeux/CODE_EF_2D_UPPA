@@ -86,7 +86,8 @@ from .assemblage_general import (
     grad_base_ref,
     assemble_volume,
     precompute_face_ref,
-    assemble_surface
+    assemble_surface,
+    assemble_rhs_volume
 )
 from .methode_hyperbolique import (
     assemble_hyperbo
@@ -187,6 +188,7 @@ __all__ = [
     "grad_base_ref",
     "assemble_volume",
     "precompute_face_ref",
-    "assemble_surface"
+    "assemble_surface",
+    "assemble_rhs_volume"
     ]
 __version__ = "0.0.1"
