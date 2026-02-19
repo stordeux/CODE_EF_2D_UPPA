@@ -15,14 +15,14 @@ MASSE_CG = assemble_volume(mesh, ordre, func, "u", "v", methode="CG")
 # ou 
 # MASSE_CG = build_masse_CG(mesh, ordre, verbose=False)
 
-func = lambda x, y: alpha * .4  # Fonction de test (constante)
+func = lambda x, y: alpha * 0  # Fonction de test (constante)
 MIXTE_CG = assemble_volume(mesh, ordre, func, "dxu", "v", methode="CG")
 
 func = lambda x, y: 1  # Fonction de test (constante)
 RIGIDITE_CGx = assemble_volume(mesh, ordre, func, "dxu", "dxv", methode="CG")
 RIGIDITE_CGy = assemble_volume(mesh, ordre, func, "dyu", "dyv", methode="CG")
 func = lambda x, y: alpha  
-MASSE_BORD_CG = assemble_surface(mesh, ordre, func, "u", "v", methode="CG",domaine="all")
+MASSE_BORD_CG = assemble_surface(mesh, ordre, func, "u", "v", methode="CG",domaine="FOURIER")
 taille_MAT = nombre_dof_CG(mesh, ordre)
 Nnz = RIGIDITE_CGx.nnz + RIGIDITE_CGy.nnz + MASSE_CG.nnz + MASSE_BORD_CG.nnz + MIXTE_CG.nnz
 MAT_EF_CG = COOMatrix(taille_MAT, taille_MAT, Nnz)
@@ -34,7 +34,7 @@ MAT_EF_CG =MAT_EF_CG + MASSE_CG
 MAT_EF_CG = MAT_EF_CG + MASSE_BORD_CG
 x0=0
 y0=.6
-fsource = lambda x, y: np.exp(- 25* (x-x0)**2- 10*(y-y0)**2)
+fsource = lambda x, y: np.exp(- 25* (x-x0)**2- 25*(y-y0)**2)
 
 F_CG = assemble_rhs_volume(mesh, ordre, fsource, operatorv="v", methode="CG")
 

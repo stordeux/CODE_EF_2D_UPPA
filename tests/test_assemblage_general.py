@@ -200,3 +200,9 @@ def test_mixte_variable_CG():
     val1y = Masse_CG.sesquilinear_form(Vy, V)
     val2y = MAT_1y.sesquilinear_form(Vy, Vy)
     assert np.isclose(val1y, val2y, atol=1e-12), "problème d'assemblage de la matrice variable mixte CG (dyu,v)"
+
+
+#def test_positivite():
+#    mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.1)
+#    ordre = 2
+#    A = assemble_surface(mesh, ordre, M, "(func.n)u", "(func.n)v")  # (M·n)^2

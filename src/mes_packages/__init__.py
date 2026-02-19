@@ -27,7 +27,9 @@ from .mesh import (
     inject_bc_into_neighbors,
     build_neighborhood_structure_with_bc,
     plot_mesh_with_bc,
-    build_boundary_conditions
+    build_boundary_conditions,
+    compute_h_min,
+    compute_element_sizes
     )    
 from .methode_DG import (
     build_loctoglob_DG,
@@ -197,6 +199,8 @@ __all__ = [
     "assemble_rhs_surface",
     "make_vector_field",
     "assemble_skeleton_par_element",
-    "assemble_skeleton_par_face"
+    "assemble_skeleton_par_face",
+    "compute_h_min",
+    "compute_element_sizes"
     ]
 __version__ = "0.0.1"

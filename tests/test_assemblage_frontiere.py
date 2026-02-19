@@ -1,5 +1,7 @@
 import numpy as np
+import pytest
 from mes_packages import *
+from mes_packages import mesh
 
 
 def test_assemble_surface_equals_build_masse_frontiere_CG():
@@ -530,3 +532,51 @@ def test_assemble_surface_normale_6_DG():
     assert np.isclose(val, 2 * 0.3), "DG : norme tangentielle incorrecte"
 
     
+# Faire une boucle sur ordre
+@pytest.mark.parametrize("ordre", [1, 2, 3, 4])
+def test_positivite_0(ordre):
+    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.1)
+    func = lambda x, y: 1
+    # Assemblage générique
+    MAT_1 = assemble_surface(mesh, ordre, func, "u", "v", methode="DG",domaine="FOURIER")
+    # Détermination du type de MAT_1
+    print("MAT_1 est de type ", type(MAT_1))
+    ok, lam_min = MAT_1.check_positive_definite()
+    assert ok, "probleme de positivité"
+
+
+@pytest.mark.parametrize("ordre", [1, 2, 3, 4])
+def test_positivite_1(ordre):
+    mesh = create_mesh_circle_in_square(0.2, 0.5, 0.1)
+    func = lambda x, y: 1
+    # Assemblage générique
+    MAT_1 = assemble_surface(mesh, ordre, func, "dnu", "dnv", methode="CG",domaine="FOURIER")
+    # Détermination du type de MAT_1
+    print("MAT_1 est de type ", type(MAT_1))
+    ok, lam_min = MAT_1.check_positive_definite()
+    assert ok, "probleme de positivité"
+
+
+@pytest.mark.parametrize("ordre", [1, 2, 3, 4])
+def test_positivite_2(ordre):
+        mesh = create_mesh_circle_in_square(0.1, 1, 0.1)
+        func = lambda x, y: 1
+        # Assemblage générique
+        MAT_1 = assemble_surface(mesh, ordre, func, "dtu", "dtv", methode="CG",domaine="FOURIER")
+        # Détermination du type de MAT_1
+        print("MAT_1 est de type ", type(MAT_1))
+        ok, lam_min = MAT_1.check_positive_definite()
+        assert ok, "probleme de positivité"
+
+@pytest.mark.parametrize("ordre", [1, 2, 3, 4])
+def test_positivite_3(ordre):
+    mesh = create_mesh_circle_in_square(0.1, 1, 0.1)
+    func = lambda x, y: 1
+    # Assemblage générique
+    MAT_1 = assemble_surface(mesh, ordre, func, "dxu", "dxv", methode="DG",domaine="FOURIER")
+    # Détermination du type de MAT_1
+    print("MAT_1 est de type ", type(MAT_1))
+    ok, lam_min = MAT_1.check_positive_definite()
+    print("Valeur minimale de l'autovecteur : ", lam_min)
+    assert ok, "probleme de positivité"
+

@@ -1208,3 +1208,39 @@ def plot_mesh_with_bc(mesh):
     ax.set_title("Maillage avec conditions aux limites (auto)")
     ax.legend()
     plt.show()
+
+
+def compute_element_sizes(mesh):
+    """
+    Calcule une taille caractéristique h_K pour chaque triangle.
+
+    On utilise : h_K = sqrt(4*|K|/pi)
+    (diamètre du disque équivalent, robuste pour SIPG)
+    """
+
+    points = mesh.points[:, :2]
+    triangles = mesh.cells_dict["triangle"]
+
+    NT = len(triangles)
+    hK = np.zeros(NT)
+
+    for iT, (i0, i1, i2) in enumerate(triangles):
+        A0 = points[i0]
+        A1 = points[i1]
+        A2 = points[i2]
+
+        area = triangle_area(A0, A1, A2)
+
+        hK[iT] = np.sqrt(4 * area / np.pi)
+
+    return hK
+
+def compute_h_min(mesh):
+    """
+    Calcule h_min = min_K h_K, la plus petite taille d'élément du maillage.
+
+    Utile pour le critère de stabilité explicite (CFL).
+    """
+
+    hK = compute_element_sizes(mesh)
+    return hK.min()

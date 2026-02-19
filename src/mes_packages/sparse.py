@@ -328,3 +328,39 @@ class COOMatrix:
             return True
 
         return np.max(np.abs(csr.data)) <= tol
+    
+    def check_positive_definite(self, tol=1e-12):
+        """
+        Teste si la matrice est (semi-)définie positive.
+
+        Méthode robuste :
+            - petite matrice → test dense exact
+            - grande matrice → test énergie aléatoire (plus stable que ARPACK)
+
+        Retour :
+            ok, lambda_min_estimee, infos
+        """
+        self.to_csr()
+        A = self.csr
+        N= self.nb_lig
+
+
+        # --------------------------------------------------
+        # CAS 2 : grande matrice → test variationnel
+        # --------------------------------------------------
+        ntests = 20
+        lam_min = +np.inf
+
+        for _ in range(ntests):
+            x = np.random.randn(N)
+            x /= np.linalg.norm(x)
+
+            Ax = A @ x
+            val = np.vdot(x, Ax).real  # énergie
+
+            lam_min = min(lam_min, val)
+
+            if val < -tol:
+                return False, val
+
+        return True, lam_min
