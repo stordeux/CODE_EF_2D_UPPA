@@ -329,7 +329,7 @@ class COOMatrix:
 
         return np.max(np.abs(csr.data)) <= tol
     
-    def check_positive_definite(self, tol=1e-12):
+    def is_positive(self, tol=1e-12):
         """
         Teste si la matrice est (semi-)définie positive.
 
@@ -364,3 +364,16 @@ class COOMatrix:
                 return False, val
 
         return True, lam_min
+
+    def is_equal(self, other, tol=1e-8):
+        """
+        Teste si self et other sont égales à une tolérance près
+        (après réduction des contributions répétées)
+        """
+        if self.nb_lig != other.nb_lig or self.nb_col != other.nb_col:
+            return False
+        
+        MAT= COOMatrix(self.shape[0], self.shape[1], self.l + other.l)
+        MAT = MAT + self
+        MAT = MAT - other
+        return MAT.is_zero(tol=tol)

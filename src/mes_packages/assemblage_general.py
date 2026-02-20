@@ -1,4 +1,5 @@
 import numpy as np
+import re
 from mes_packages import *
 from .quadrature import quadrature_triangle_ref_2D
 
@@ -218,8 +219,6 @@ def assemble_volume(mesh, ordre, func, operatoru, operatorv, methode="CG"):
 
 #####################################################################################
 ####### Assemblage symbolique des frontières ######################################## #####################################################################################
-
-import numpy as np
 
 def precompute_face_ref(ordre: int, ordreq: int | None = None, dtype=np.complex128):
     """
@@ -714,7 +713,7 @@ def make_vector_field(fx, fy):
 
 
 
-def assemble_skeleton_par_element(mesh, ordre, coef,
+def assemble_skeleton_par_element_old(mesh, ordre, coef,
                       operatoru="sautu", operatorv="sautv",
                       methode="DG", dtype=np.complex128):
     """
@@ -1402,242 +1401,193 @@ def assemble_skeleton_par_face(mesh, ordre, coef,
 ### COPIE COLLE POUR FUTURE DEV #################################
 #################################################################
 
-def assemble_skeleton_par_element_2(mesh, ordre, coef,
-                      operatoru="sautu", operatorv="sautv",
-                      methode="DG", dtype=np.complex128):
+def assemble_skeleton_par_element(mesh, ordre, coef,
+                                  operatoru="uT", operatorv="vT",
+                                  methode="DG", dtype=np.complex128):
     """
-    Assemble une matrice de squelette (faces internes uniquement) :
+    Assemble une matrice de squelette sur les faces INTERNES,
+    en insérant un unique bloc local (Nloc x Nloc) par couple (operatorv, operatoru) :
 
-        A_ij += ∫_{F_int} coef(x,y) * OPV(v_i) * OPU(u_j) ds
+        A_ij += ∫_{F_int} weight(x,y) * OPV(v_i) * OPU(u_j) ds
 
-    Convention :
-      - T = élément courant
-      - V = élément voisin
-      - nT = normale sortante de T sur la face
-      - nV = normale sortante de V sur la face commune (opposée à nT)
-      - t  = tangente orientée suivant T : t = (-nT_y, nT_x)
-        et on utilise CE MÊME t pour les opérateurs côté V quand nécessaire.
+    Opérateurs supportés (monocôté) : (idem pour u/v)
 
-    Opérateurs supportés (pour u et v, avec u↔v) :
-      - Traces : uT, uV ; vT, vV
-      - Sauts : sautu = uT - uV ; sautv = vT - vV
-      - Dérivées normales : dnuT, dnuV ; dnvT, dnvV
-      - Saut normal : sautdnu = dnuT + dnuV ; sautdnv = dnvT + dnvV
-      - Dérivées cartésiennes : dxuT, dxuV, dyuT, dyuV (et idem v)
-      - Dérivées tangentielles (t orientée suivant T) :
-            dtuT, dtuV ; dtvT, dtvV
-            sautdtu = dtuT - dtuV ; sautdtv = dtvT - dtvV
-      - Flux vectoriel scalaire*normale :
-            uTnT = uT * nT (vecteur 2D), uVnV = uV * nV
-            sautDGu = uT*nT + uV*nV (vecteur 2D)
-        (et idem : vTnT, vVnV, sautDGv)
-      - Composantes normales (scalaires) :
-            uTnx = uT * nT_x,  uTny = uT * nT_y
-            uVnx = uV * nV_x,  uVny = uV * nV_y
-        (et idem vTnx, vTny, vVnx, vVny)
-        Alias acceptés : u_Tnx, u_Vnx, u_Tny, u_Vny (idem pour v)
-      - Flux matriciel (vecteur 2D) :
-            (M.n)uT = (M nT) * uT   ;   (M.n)uV = (M nV) * uV
-        Alias acceptés : (M.n)u_T, (M.n)u_V (idem pour v)
+      Traces :
+        uT, uV   (et vT, vV)
 
-    IMPORTANT :
-      - Si operatoru/operatorv utilise (M.n)…, alors `coef` est interprété comme
-        un champ matriciel 2x2 (constant ou évalué aux points de quadrature).
-        Dans ce cas, on n’applique PAS un coefficient scalaire supplémentaire.
-        (Si tu veux un scalaire *et* M, multiplie-le directement dans M.)
-      - Si OPV et OPU sont vectoriels, on contracte par produit scalaire (dot).
+      Dérivées cartésiennes (scalaires) :
+        dxuT, dyuT, dxuV, dyuV   (idem v)
+
+      Dérivées normale / tangentielle (scalaires) :
+        dnuT, dtuT, dnuV, dtuV   (idem v)
+
+      Gradient plein (vectoriel 2D) :
+        graduT, graduV   (et gradvT, gradvV)
+
+      Flux n*u (vectoriel 2D) :
+        uTnT, uVnV   (et vTnT, vVnV)
+
+      Multiplication par composantes normales (scalaires) :
+        uTnx, uTny, uVnx, uVny   (idem v)
+        (les écritures préfixées nxuT, nyuT, ... sont aussi acceptées)
+
+      Multiplication par (M·n) (scalaire) :
+        (M.n)uT, (M.n)uV   (et (M.n)vT, (M.n)vV)
+        Alias acceptés : MnuT, MnuV, MnvT, MnvV
+
+        IMPORTANT :
+          - M est un champ VECTORIEL 2D : M(x,y) = (Mx(x,y), My(x,y)) ∈ C^2.
+          - (M·n) est donc un SCALAIRE :
+                (M·n)(x,y) = Mx(x,y) * nx + My(x,y) * ny
+            où n = (nx, ny) est la normale (du côté considéré).
+
+    Alias côté "T" par défaut :
+      u -> uT, dxu -> dxuT, dnu -> dnuT, gradu -> graduT, (M.n)u -> (M.n)uT, etc.
+
+    Interprétation de `coef` :
+      - Cas standard (pas de (M.n)…) : `coef` est un scalaire
+        (constante complexe ou callable(x,y)->(Nq,))
+        et le poids effectif est :
+            weight(q) = wq(q) * coef(xq,yq)
+
+      - Si operatoru OU operatorv utilise (M.n)… :
+        `coef` représente le champ vectoriel M(x,y) = (Mx,My) ∈ C^2
+        (constante ou callable(x,y)->(Mx,My), ou tableau de forme (2,), (2,Nq), (Nq,2)).
+        Dans ce cas, la factorisation est faite DANS l'opérateur (M·n) :
+            (M·n)(q) = Mx(q)*nx + My(q)*ny
+        et le poids de quadrature reste :
+            weight(q) = wq(q)
 
     Notes :
-      - L’alignement des points de quadrature entre T et V est géré automatiquement
-        (on inverse l’ordre des points côté V si nécessaire).
+      - L'alignement des points de quadrature côté V est géré (reverse si nécessaire).
+      - `methode` est typiquement "DG".
     """
-    # --- Alias pratique "sautDG"
-    if operatoru == "sautDG":
-        operatoru = "sautDGu"
-    if operatorv == "sautDG":
-        operatorv = "sautDGv"
 
-    # ------------------------------------------------------------
+    if methode not in ("DG", "CG"):
+        raise ValueError(f"Méthode inconnue : {methode}")
+
+    # -----------------------------
     # Helpers locaux
-    # ------------------------------------------------------------
+    # -----------------------------
     def _insert_block(Mat, rows_glob, cols_glob, Mblock):
-        """Insertion rapide d'un bloc (Nloc x Nloc) dans Mat."""
         rr = np.repeat(rows_glob, cols_glob.size)
         cc = np.tile(cols_glob, rows_glob.size)
         vv = Mblock.reshape(-1)
         Mat.ajout_rapide(rr, cc, vv.size, vv)
 
-    def _zeros_like(ref):
-        return np.zeros_like(ref, dtype=dtype)
-
     def _normalize_op(op: str) -> str:
-        """Normalise quelques alias utilisateur (underscore, espaces)."""
         op = op.strip().replace(" ", "")
-        # u_T... -> uT..., u_V... -> uV... (idem v)
         op = (op.replace("u_T", "uT").replace("u_V", "uV")
                 .replace("v_T", "vT").replace("v_V", "vV"))
+        # alias "MnuT" etc : on laisse tel quel
         return op
 
-    def _op_kind(op: str) -> str:
-        """Normalise les alias u/v -> 'kind' indépendant de la variable."""
+    def _expand_default_side(op: str) -> str:
+        # Si pas de marque uT/uV/vT/vV, on force côté T par défaut
+        if re.search(r"[uv][TV]", op) is None:
+            # cas typiques : "u", "dxu", "dnu", "gradu", "(M.n)u", "Mnu", etc.
+            if op.endswith(("u", "v")):
+                op = op + "T"
+        return op
+
+    def _parse_op(op: str):
+        """
+        Retourne (side, kind).
+        side ∈ {"T","V"}
+        kind ∈ {"val","dx","dy","dn","dt","grad","flux_n","flux_nx","flux_ny","Mn_flux"}
+        """
         op = _normalize_op(op)
+        op = _expand_default_side(op)
 
-        # Synonymes pratiques : on interprète sans côté comme côté T
-        alias = {
-            "u": "uT", "v": "vT",
-            "dxu": "dxuT", "dxv": "dxvT",
-            "dyu": "dyuT", "dyv": "dyvT",
-            "dnu": "dnuT", "dnv": "dnvT",
-            "dtu": "dtuT", "dtv": "dtvT",
-        }
-        op = alias.get(op, op)
+        m = re.search(r"[uv]([TV])", op)
+        if m is None:
+            raise ValueError(f"Impossible de déterminer le côté (T/V) pour l'opérateur '{op}'")
+        side = m.group(1)
 
-        mapping = {
-            # traces
-            "uT": "valT", "vT": "valT",
-            "uV": "valV", "vV": "valV",
+        # On retire la première occurrence uT/uV/vT/vV
+        op_wo = re.sub(r"([uv])[TV]", "", op, count=1)
 
-            # sauts trace
-            "sautu": "jump", "sautv": "jump",
+        # Normalisations (M.n)
+        if op_wo in ("(M.n)", "(M.n).", "(M.n)"):
+            op_wo = "(M.n)"
+        if op_wo in ("Mn", "M.n", "Mnu", "Mnv"):
+            # Au cas où (rare ici, mais robuste)
+            op_wo = "Mn"
 
-            # dérivées normales
-            "dnuT": "dnT", "dnvT": "dnT",
-            "dnuV": "dnV", "dnvV": "dnV",
-            "sautdnu": "jump_dn", "sautdnv": "jump_dn",
-
-            # dérivées cartésiennes
-            "dxuT": "dxT", "dxvT": "dxT",
-            "dxuV": "dxV", "dxvV": "dxV",
-            "dyuT": "dyT", "dyvT": "dyT",
-            "dyuV": "dyV", "dyvV": "dyV",
-
-            # dérivées tangentielles (t orientée suivant T)
-            "dtuT": "dtT", "dtvT": "dtT",
-            "dtuV": "dtV", "dtvV": "dtV",
-            "sautdtu": "jump_dt", "sautdtv": "jump_dt",
-
-            # flux vectoriel scalaire*normale (vecteur 2D)
-            "uTnT": "fluxT", "vTnT": "fluxT",
-            "uVnV": "fluxV", "vVnV": "fluxV",
-            "sautDGu": "jump_flux", "sautDGv": "jump_flux",
-
-            # composantes normales (scalaires)
-            "uTnx": "flux_xT", "vTnx": "flux_xT",
-            "uTny": "flux_yT", "vTny": "flux_yT",
-            "uVnx": "flux_xV", "vVnx": "flux_xV",
-            "uVny": "flux_yV", "vVny": "flux_yV",
-
-            # flux matriciel (vecteur 2D)
-            "(M.n)uT": "Mn_fluxT", "(M.n)vT": "Mn_fluxT",
-            "(M.n)uV": "Mn_fluxV", "(M.n)vV": "Mn_fluxV",
-            # alias plus "compact" si besoin
-            "MnuT": "Mn_fluxT", "MnvT": "Mn_fluxT",
-            "MnuV": "Mn_fluxV", "MnvV": "Mn_fluxV",
-        }
-
-        if op not in mapping:
-            raise ValueError(
-                f"Opérateur inconnu : {op}\n"
-                f"Opérateurs supportés : {sorted(mapping.keys())}"
-            )
-        return mapping[op]
-
-    def _as_matrix_field(val, Nq: int):
-        """
-        Convertit `val` en champ (2,2,Nq).
-        Formats acceptés :
-          - (2,2) constant
-          - (2,2,Nq)
-          - (Nq,2,2)
-        """
-        M = np.asarray(val, dtype=dtype)
-        if M.shape == (2, 2):
-            M = np.repeat(M[:, :, None], Nq, axis=2)
-        elif M.shape == (2, 2, Nq):
-            pass
-        elif M.shape == (Nq, 2, 2):
-            M = np.moveaxis(M, 0, -1)  # -> (2,2,Nq)
+        # Détection kind
+        if op_wo == "":
+            kind = "val"
+        elif op_wo == "dx":
+            kind = "dx"
+        elif op_wo == "dy":
+            kind = "dy"
+        elif op_wo == "dn":
+            kind = "dn"
+        elif op_wo == "dt":
+            kind = "dt"
+        elif op_wo == "grad":
+            kind = "grad"
+        elif op_wo in ("nT", "nV"):
+            # cohérence nT/nV avec le côté
+            if (side == "T" and op_wo != "nT") or (side == "V" and op_wo != "nV"):
+                raise ValueError(f"Incohérence opérateur '{op}' : côté={side} mais suffixe='{op_wo}'.")
+            kind = "flux_n"
+        elif op_wo == "nx":
+            kind = "flux_nx"
+        elif op_wo == "ny":
+            kind = "flux_ny"
+        elif op_wo in ("(M.n)", "Mn"):
+            kind = "Mn_flux"
         else:
             raise ValueError(
-                f"Pour un opérateur (M.n)…, `coef` doit être un champ 2x2. "
-                f"Formes acceptées: (2,2), (2,2,Nq), (Nq,2,2). Reçu: {M.shape}"
+                f"Opérateur non supporté (mode 1-bloc) : '{op}'.\n"
+                f"Reçu après parsing : side={side}, token='{op_wo}'."
             )
-        return M
 
-    def _matvec_2x2(M_2x2xNq, n_vec):
-        """(2,2,Nq) @ (2,) -> (2,Nq)."""
+        return side, kind
+
+
+    def _as_vector_field(val, Nq: int):
+        """
+        Convertit `val` en champ vectoriel (2,Nq), i.e. M(x,y)=(Mx,My) ∈ C^2.
+
+        Formats acceptés :
+        - tuple/list (Mx, My) avec Mx,My scalaires ou (Nq,)
+        - (2,) constant
+        - (2,Nq)
+        - (Nq,2)
+        """
+        if isinstance(val, (tuple, list)) and len(val) == 2:
+            fx, fy = val
+            fx = np.asarray(fx, dtype=dtype)
+            fy = np.asarray(fy, dtype=dtype)
+            if fx.ndim == 0:
+                fx = fx * np.ones(Nq, dtype=dtype)
+            if fy.ndim == 0:
+                fy = fy * np.ones(Nq, dtype=dtype)
+            if fx.shape != (Nq,) or fy.shape != (Nq,):
+                raise ValueError(f"coef=(Mx,My) doit fournir deux tableaux (Nq,), reçu {fx.shape} et {fy.shape}.")
+            return np.stack((fx, fy), axis=0)
+
+        M = np.asarray(val, dtype=dtype)
+        if M.shape == (2,):
+            return np.repeat(M[:, None], Nq, axis=1)
+        if M.shape == (2, Nq):
+            return M
+        if M.shape == (Nq, 2):
+            return M.T
+
+        raise ValueError(
+            "Pour (M.n)… `coef` doit être un champ vectoriel M=(Mx,My) ∈ C^2. "
+            "Formes acceptées: (Mx,My), (2,), (2,Nq), (Nq,2). "
+            f"Reçu: {M.shape}"
+        )
+
+    def _dot_Mn(M_2xNq, n_vec):
+        """(2,Nq) · (2,) -> (Nq,)  avec (M·n)=Mx*nx+My*ny."""
         nx, ny = float(n_vec[0]), float(n_vec[1])
-        out0 = M_2x2xNq[0, 0, :] * nx + M_2x2xNq[0, 1, :] * ny
-        out1 = M_2x2xNq[1, 0, :] * nx + M_2x2xNq[1, 1, :] * ny
-        return np.stack((out0, out1), axis=0)
+        return M_2xNq[0, :] * nx + M_2xNq[1, :] * ny
 
-    def _build_op(op_str,
-                  phiT, dxT, dyT, dnT, dtT, fluxT,
-                  phiV, dxV, dyV, dnV, dtV, fluxV,
-                  MnfluxT=None, MnfluxV=None):
-        """
-        Retourne (OP_T, OP_V) où :
-          OP_T multiplie les ddl de T
-          OP_V multiplie les ddl de V
-        Chaque OP est soit (Nloc,Nq) (scalaire) soit (2,Nloc,Nq) (vectoriel).
-        """
-        kind = _op_kind(op_str)
-
-        # Références de zéros (scalaire / vectoriel)
-        zS = _zeros_like(phiT)
-        zV = _zeros_like(fluxT)
-
-        # -------------------------
-        # Traces / sauts
-        # -------------------------
-        if kind == "valT":   return phiT, zS
-        if kind == "valV":   return zS,  phiV
-        if kind == "jump":   return phiT, -phiV
-
-        # -------------------------
-        # Dérivées cartésiennes
-        # -------------------------
-        if kind == "dxT":    return dxT, zS
-        if kind == "dxV":    return zS,  dxV
-        if kind == "dyT":    return dyT, zS
-        if kind == "dyV":    return zS,  dyV
-
-        # -------------------------
-        # Dérivées normales/tangentielles
-        # -------------------------
-        if kind == "dnT":        return dnT, zS
-        if kind == "dnV":        return zS,  dnV
-        if kind == "jump_dn":    return dnT, dnV     # + côté V (normale sortante V)
-
-        if kind == "dtT":        return dtT, zS
-        if kind == "dtV":        return zS,  dtV
-        if kind == "jump_dt":    return dtT, -dtV    # t orientée suivant T
-
-        # -------------------------
-        # Flux n*u (vectoriel) + composantes (scalaires)
-        # -------------------------
-        if kind == "fluxT":      return fluxT, zV
-        if kind == "fluxV":      return zV,    fluxV
-        if kind == "jump_flux":  return fluxT, fluxV  # uT*nT + uV*nV
-
-        if kind == "flux_xT":    return fluxT[0], zS
-        if kind == "flux_yT":    return fluxT[1], zS
-        if kind == "flux_xV":    return zS, fluxV[0]
-        if kind == "flux_yV":    return zS, fluxV[1]
-
-        # -------------------------
-        # Flux (M n) * u (vectoriel)
-        # -------------------------
-        if kind == "Mn_fluxT":
-            if MnfluxT is None:
-                raise ValueError("Opérateur (M.n)… demandé mais MnfluxT n'est pas fourni.")
-            return MnfluxT, _zeros_like(MnfluxT)
-        if kind == "Mn_fluxV":
-            if MnfluxV is None:
-                raise ValueError("Opérateur (M.n)… demandé mais MnfluxV n'est pas fourni.")
-            return _zeros_like(MnfluxV), MnfluxV
-
-        raise RuntimeError("Cas non géré (ne devrait pas arriver).")
 
     def _block_from_ops(opV, opU, weight, edge_length):
         """
@@ -1649,11 +1599,9 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
             raise ValueError("Incompatibilité scalaire/vectoriel entre operatorv et operatoru.")
 
         if opV.ndim == 2:
-            # scalaire : (Nloc,Nq) @ (Nq,Nloc)
             return edge_length * (opV * weight[None, :]) @ opU.T
 
         if opV.ndim == 3 and opV.shape[0] == 2:
-            # vectoriel 2D : somme des composantes
             M = np.zeros((opV.shape[1], opU.shape[1]), dtype=dtype)
             for k in range(2):
                 M += (opV[k] * weight[None, :]) @ opU[k].T
@@ -1661,16 +1609,71 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
 
         raise ValueError("Format d'opérateur non supporté (attendu scalaire ou vectoriel 2D).")
 
-    # ------------------------------------------------------------
-    # Détection globale : besoin du champ matriciel M ?
-    # ------------------------------------------------------------
-    kind_u_global = _op_kind(operatoru)
-    kind_v_global = _op_kind(operatorv)
-    need_Mn = (kind_u_global.startswith("Mn_") or kind_v_global.startswith("Mn_"))
+    def _build_op(kind, side,
+                 phiT, dxT, dyT, nT,
+                 phiV, dxV, dyV, nV,
+                 t_vec,
+                 MnT=None, MnV=None):
+        """
+        Retourne OP (scalaire (Nloc,Nq) ou vectoriel (2,Nloc,Nq)) du côté choisi.
+        """
+        if side == "T":
+            phi = phiT; dx = dxT; dy = dyT; n = nT
+            Mn = MnT
+        else:
+            phi = phiV; dx = dxV; dy = dyV; n = nV
+            Mn = MnV
 
-    # ------------------------------------------------------------
+        tx, ty = float(t_vec[0]), float(t_vec[1])
+
+        if kind == "val":
+            return phi
+
+        if kind == "dx":
+            return dx
+
+        if kind == "dy":
+            return dy
+
+        if kind == "dn":
+            return n[0] * dx + n[1] * dy
+
+        if kind == "dt":
+            return tx * dx + ty * dy
+
+        if kind == "grad":
+            return np.stack((dx, dy), axis=0)  # (2,Nloc,Nq)
+
+        if kind == "flux_n":
+            return np.stack((n[0] * phi, n[1] * phi), axis=0)  # (2,Nloc,Nq)
+
+        if kind == "flux_nx":
+            return n[0] * phi
+
+        if kind == "flux_ny":
+            return n[1] * phi
+
+        if kind == "Mn_flux":
+            if Mn is None:
+                raise ValueError("Opérateur (M.n)… demandé mais Mn n'est pas fourni.")
+            # Mn : (Nq,) = (M·n)
+            return phi * Mn[None, :]
+
+        raise RuntimeError("Cas non géré (ne devrait pas arriver).")
+
+    # -----------------------------
+    # Parsing opérateurs + contraintes 1-bloc
+    # -----------------------------
+    side_u, kind_u = _parse_op(operatoru)
+    side_v, kind_v = _parse_op(operatorv)
+
+
+    need_grad = (kind_u in ("dx", "dy", "dn", "dt", "grad")) or (kind_v in ("dx", "dy", "dn", "dt", "grad"))
+    need_Mn = (kind_u == "Mn_flux") or (kind_v == "Mn_flux")
+
+    # -----------------------------
     # Données maillage / pré-calculs référence
-    # ------------------------------------------------------------
+    # -----------------------------
     wq, xq, yq, Phi_val, Phi_dxhat, Phi_dyhat = precompute_face_ref(ordre, dtype=dtype)
     wq = np.asarray(wq)
 
@@ -1678,15 +1681,16 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
     points = mesh.points[:, :2]
     NT = triangles.shape[0]
     Nloc = (ordre + 1) * (ordre + 2) // 2
+    Nq = wq.size
 
     # Connectivité globale (CG ou DG)
     LoctoGlob = loc_to_glob_general(mesh, ordre, methode)
     Nglob = int(np.max(LoctoGlob)) + 1
 
-    # Voisinage (faces internes)
+    # Voisinage
     neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
 
-    # Estimation nnz (comme avant : large, mais sûr)
+    # Nombre de faces internes, comptées une fois 
     n_faces_int = 0
     for T in range(NT):
         for F in range(3):
@@ -1694,11 +1698,11 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
             if V >= 0:
                 n_faces_int += 1
 
-    nnz_est = max(1, 4 * n_faces_int * Nloc * Nloc)
+    # 1 bloc par face -> 1 * n_faces_int
+    nnz_est = max(1, n_faces_int * Nloc * Nloc)
     A = COOMatrix(Nglob, Nglob, nnz_est)
 
     # Buffers
-    Nq = wq.size
     xT = np.empty(Nq, dtype=float)
     yT = np.empty(Nq, dtype=float)
     xV = np.empty(Nq, dtype=float)
@@ -1709,11 +1713,12 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
     dxV = np.empty((Nloc, Nq), dtype=dtype)
     dyV = np.empty((Nloc, Nq), dtype=dtype)
 
-    # ------------------------------------------------------------
-    # Boucle faces internes
-    # ------------------------------------------------------------
-    face_nodes = ((1, 2), (2, 0), (0, 1))  # indices locaux des sommets de face
+    # Faces (indices locaux sommets)
+    face_nodes = ((1, 2), (2, 0), (0, 1))
 
+    # -----------------------------
+    # Boucle faces internes 
+    # -----------------------------
     for T in range(NT):
         i0, i1, i2 = triangles[T]
         A0 = points[i0]
@@ -1726,9 +1731,10 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
         for F in range(3):
             V = neighbors[T, F]
             if V < 0:
-                continue
+                continue  # internes et comptées une fois
 
             FV = neighbor_faces[T, F]
+
             j0, j1, j2 = triangles[V]
             B0 = points[j0]
             B1 = points[j1]
@@ -1737,7 +1743,7 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
             JV = np.column_stack((B1 - B0, B2 - B0))
             JinvV = np.linalg.inv(JV)
 
-            # Longueur physique de la face (prise côté T)
+            # Longueur physique face (côté T)
             a_loc, b_loc = face_nodes[F]
             nodes_T = (triangles[T][a_loc], triangles[T][b_loc])
             edge_vec = points[nodes_T[1]] - points[nodes_T[0]]
@@ -1746,17 +1752,17 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
             # Normales sortantes
             nT = calcul_normale(A0, A1, A2, F)
             nV_geom = calcul_normale(B0, B1, B2, FV)
-            # on force nV opposée à nT (robuste)
+            # force nV opposée à nT
             nV = -nV_geom if (nV_geom[0]*nT[0] + nV_geom[1]*nT[1]) > 0 else nV_geom
 
-            # Tangente orientée suivant T
-            t = np.array([-nT[1], nT[0]], dtype=float)
+            # Tangente orientée suivant T (même convention que tes anciens codes)
+            t_vec = np.array([-nT[1], nT[0]], dtype=float)
 
-            # Points physiques côté T (référence face F)
+            # Points physiques côté T
             xT[:] = A0[0] + xq[F, :] * (A1[0] - A0[0]) + yq[F, :] * (A2[0] - A0[0])
             yT[:] = A0[1] + xq[F, :] * (A1[1] - A0[1]) + yq[F, :] * (A2[1] - A0[1])
 
-            # Points physiques côté V (référence face FV) pour détecter orientation
+            # Points physiques côté V (pour décider si on inverse)
             xV[:] = B0[0] + xq[FV, :] * (B1[0] - B0[0]) + yq[FV, :] * (B2[0] - B0[0])
             yV[:] = B0[1] + xq[FV, :] * (B1[1] - B0[1]) + yq[FV, :] * (B2[1] - B0[1])
 
@@ -1764,8 +1770,8 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
             err_rev  = np.max(np.abs(xT - xV[::-1])) + np.max(np.abs(yT - yV[::-1]))
             reverse_V = (err_rev < err_same)
 
-            # Bases sur la face (référence)
-            phiT = Phi_val[F, :, :]             # (Nloc,Nq)
+            # Bases de référence sur la face
+            phiT = Phi_val[F, :, :]          # (Nloc,Nq)
             dphxT = Phi_dxhat[F, :, :]
             dphyT = Phi_dyhat[F, :, :]
 
@@ -1778,80 +1784,72 @@ def assemble_skeleton_par_element_2(mesh, ordre, coef,
                 dphxV = dphxV[:, ::-1]
                 dphyV = dphyV[:, ::-1]
 
-            # Gradients physiques
-            dxT[:, :] = JinvT[0, 0] * dphxT + JinvT[1, 0] * dphyT
-            dyT[:, :] = JinvT[0, 1] * dphxT + JinvT[1, 1] * dphyT
+            # Gradients physiques (si nécessaires)
+            if need_grad or kind_u in ("Mn_flux", "flux_n", "flux_nx", "flux_ny") or kind_v in ("Mn_flux", "flux_n", "flux_nx", "flux_ny"):
+                dxT[:, :] = JinvT[0, 0] * dphxT + JinvT[1, 0] * dphyT
+                dyT[:, :] = JinvT[0, 1] * dphxT + JinvT[1, 1] * dphyT
 
-            dxV[:, :] = JinvV[0, 0] * dphxV + JinvV[1, 0] * dphyV
-            dyV[:, :] = JinvV[0, 1] * dphxV + JinvV[1, 1] * dphyV
-
-            # Dérivées normales/tangentielles
-            dnT = nT[0] * dxT + nT[1] * dyT
-            dnV = nV[0] * dxV + nV[1] * dyV
-
-            dtT = t[0] * dxT + t[1] * dyT
-            dtV = t[0] * dxV + t[1] * dyV  # t orientée suivant T
-
-            # Flux vectoriel scalaire*normale (n*u)
-            fluxT = np.stack((nT[0] * phiT, nT[1] * phiT), axis=0)  # (2,Nloc,Nq)
-            fluxV = np.stack((nV[0] * phiV, nV[1] * phiV), axis=0)
+                dxV[:, :] = JinvV[0, 0] * dphxV + JinvV[1, 0] * dphyV
+                dyV[:, :] = JinvV[0, 1] * dphxV + JinvV[1, 1] * dphyV
+            else:
+                # inutile, mais on met des zéros pour éviter surprises
+                dxT.fill(0); dyT.fill(0)
+                dxV.fill(0); dyV.fill(0)
 
             # -----------------------------
-            # Coefficient / poids
+            # Coefficient / poids / Mn
             # -----------------------------
             if need_Mn:
-                # Ici `coef` est M(x,y) (2x2) : on l'injecte dans Mnflux, et le poids reste wq
+                # coef = champ vectoriel M(x,y)=(Mx,My) ∈ C^2
                 if callable(coef):
-                    Mraw = coef(xT, yT)
+                    Mraw = coef(xT, yT)   # évaluation sur les points physiques
                 else:
                     Mraw = coef
-                Mq = _as_matrix_field(Mraw, Nq)           # (2,2,Nq)
-                MnT = _matvec_2x2(Mq, nT)                 # (2,Nq)
-                MnV = _matvec_2x2(Mq, nV)                 # (2,Nq)
-                MnfluxT = np.stack((MnT[0] * phiT, MnT[1] * phiT), axis=0)  # (2,Nloc,Nq)
-                MnfluxV = np.stack((MnV[0] * phiV, MnV[1] * phiV), axis=0)
-                weight = wq.astype(dtype)                 # (Nq,)
+
+                Mq  = _as_vector_field(Mraw, Nq)   # (2,Nq)
+                MnT = _dot_Mn(Mq, nT)              # (Nq,)
+                MnV = _dot_Mn(Mq, nV)              # (Nq,)
+                weight = wq.astype(dtype)          # pas de coef scalaire supplémentaire
             else:
-                # Cas standard : coef scalaire sur la face
+                MnT = None
+                MnV = None
                 if callable(coef):
                     cq = np.asarray(coef(xT, yT), dtype=dtype)
                 else:
                     cq = np.asarray(coef, dtype=dtype)
-
                 if cq.ndim == 0:
                     cq = cq * np.ones_like(wq, dtype=dtype)
-
-                weight = (wq.astype(dtype) * cq)          # (Nq,)
-                MnfluxT = None
-                MnfluxV = None
+                weight = (wq.astype(dtype) * cq)      # (Nq,)
 
             # -----------------------------
-            # Opérateurs : (OP_T, OP_V)
+            # Opérateurs mono-côté
             # -----------------------------
-            opu_T, opu_V = _build_op(operatoru,
-                                     phiT, dxT, dyT, dnT, dtT, fluxT,
-                                     phiV, dxV, dyV, dnV, dtV, fluxV,
-                                     MnfluxT=MnfluxT, MnfluxV=MnfluxV)
-            opv_T, opv_V = _build_op(operatorv,
-                                     phiT, dxT, dyT, dnT, dtT, fluxT,
-                                     phiV, dxV, dyV, dnV, dtV, fluxV,
-                                     MnfluxT=MnfluxT, MnfluxV=MnfluxV)
+            OPu = _build_op(kind_u, side_u,
+                            phiT, dxT, dyT, nT,
+                            phiV, dxV, dyV, nV,
+                            t_vec,
+                            MnT=MnT, MnV=MnV)
+            OPv = _build_op(kind_v, side_v,
+                            phiT, dxT, dyT, nT,
+                            phiV, dxV, dyV, nV,
+                            t_vec,
+                            MnT=MnT, MnV=MnV)
 
-            # 4 blocs
-            M_TT = _block_from_ops(opv_T, opu_T, weight, edge_length)
-            M_TV = _block_from_ops(opv_T, opu_V, weight, edge_length)
-            M_VT = _block_from_ops(opv_V, opu_T, weight, edge_length)
-            M_VV = _block_from_ops(opv_V, opu_V, weight, edge_length)
+            # -----------------------------
+            # Matrice locale unique + insertion unique
+            # -----------------------------
+            Mloc = _block_from_ops(OPv, OPu, weight, edge_length)
 
-            # Insertion globale
-            rows_T = LoctoGlob[T]
-            rows_V = LoctoGlob[V]
-            cols_T = LoctoGlob[T]
-            cols_V = LoctoGlob[V]
+            if side_v == "T":
+                rows = LoctoGlob[T]
+            else:
+                rows = LoctoGlob[V]
 
-            _insert_block(A, rows_T, cols_T, M_TT)
-            _insert_block(A, rows_T, cols_V, M_TV)
-            _insert_block(A, rows_V, cols_T, M_VT)
-            _insert_block(A, rows_V, cols_V, M_VV)
+            if side_u == "T":    
+                cols = LoctoGlob[T]
+            else:
+                cols = LoctoGlob[V]
+
+            _insert_block(A, rows, cols, Mloc)
 
     return A

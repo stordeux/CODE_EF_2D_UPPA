@@ -93,6 +93,7 @@ from .assemblage_general import (
     assemble_rhs_surface,
     make_vector_field,
     assemble_skeleton_par_element,
+    assemble_skeleton_par_element_old,
     assemble_skeleton_par_face
 )
 from .methode_hyperbolique import (
@@ -199,6 +200,7 @@ __all__ = [
     "assemble_rhs_surface",
     "make_vector_field",
     "assemble_skeleton_par_element",
+    "assemble_skeleton_par_element_old",
     "assemble_skeleton_par_face",
     "compute_h_min",
     "compute_element_sizes"

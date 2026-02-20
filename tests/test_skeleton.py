@@ -14,7 +14,7 @@ def test_assemble_skeleton_1(ordre):
     Vx = build_nodal_vector_CG(fx,mesh, ordre)
     Vy = build_nodal_vector_CG(fy,mesh, ordre)
     # Nouveau : forme jump-jump
-    A_new = assemble_skeleton_par_element(mesh, ordre, coef=1.0,
+    A_new = assemble_skeleton_par_element_old(mesh, ordre, coef=1.0,
                               operatoru="sautu", operatorv="vT",
                               methode="DG")
     # Ancien : build_jump_matrix_DG
@@ -36,7 +36,7 @@ def test_assemble_skeleton_2(ordre):
     Vx = build_nodal_vector_CG(fx,mesh, ordre)
     Vy = build_nodal_vector_CG(fy,mesh, ordre)
     # Nouveau : forme jump-jump
-    A_new = assemble_skeleton_par_element(mesh, ordre, coef=1.0,
+    A_new = assemble_skeleton_par_element_old(mesh, ordre, coef=1.0,
                               operatoru="sautDGu", operatorv="vTnT",
                               methode="DG")
     # Ancien : build_jump_matrix_DG

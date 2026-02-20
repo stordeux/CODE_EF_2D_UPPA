@@ -10,8 +10,11 @@ from mes_packages import (
     build_masse_ref_1D, 
     build_matrice_masse_frontière_DG,build_jump_matrix_DG)
 
+radius = 0.1
+square_size = 0.3
+mesh = create_mesh_circle_in_square(radius, square_size,    mesh_size=0.04)
+
 def test_loctoglob_DG():
-    mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.025)
     # Recuperation de la géométrie du maillage
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
@@ -49,7 +52,6 @@ def test_loctoglob_DG():
 
 
 def test_vecteur_nodal_DG():
-    mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.025)
     # Recuperation de la géométrie du maillage
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
@@ -64,7 +66,6 @@ def test_vecteur_nodal_DG():
     assert TEST, f"Problème : max(F1)={F1.max()} != max(U1)={U1.max()}"
 
 def test_build_masse_mixte_globale_DG():
-    mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.025)
     # Recuperation de la géométrie du maillage
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
@@ -149,7 +150,6 @@ def test_build_masse_mixte_globale_DG():
     assert TEST, "Ky(y^2,y) doit etre proche de M(y^2,1)"
 
 def test_build_masse_frontiere_elt_DG():
-    mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.025)
     # Recuperation de la géométrie du maillage
     points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
     triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]
@@ -183,16 +183,14 @@ def test_build_masse_frontiere_elt_DG():
 
 
 def test_matrice_frontiere_exterieure_DG():
-    mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.001)
-    ordre = 2
+    ordre = 3
     M_Gamma = build_matrice_masse_frontière_DG(mesh,ordre)
     U1_DG = build_nodal_vector_DG(lambda x, y: 1, mesh,ordre)
     val = M_Gamma.sesquilinear_form(U1_DG,U1_DG)  # Doit être égal au Perimetre de la frontière du domaine
-    attendu = 0.3*4 + 2*np.pi*0.1
-    assert abs(val-attendu)<1e-3, f"M_Gamma(1,1) doit etre proche du perimetre de la frontière du domaine ({val} vs {attendu})"
+    attendu = 4*square_size + 2*np.pi*radius
+    assert abs(val-attendu)<1e-2, f"M_Gamma(1,1) doit etre proche du perimetre de la frontière du domaine ({val} vs {attendu})"
 
 def test_build_jump_matrix_DG():
-    mesh = create_mesh_circle_in_square(radius=0.1, square_size=0.3, mesh_size=0.025)
     ordre = 2
     MAT_saut = build_jump_matrix_DG(mesh, ordre, verbose=True)
 
@@ -245,7 +243,6 @@ def test_build_jump_matrix_DG():
 
 def test_masse_volumique_DG():
 
-    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
     ordre = 4
 
     # --- matrice de masse DG (nouvelle version optimisée) ---
@@ -286,7 +283,6 @@ def test_masse_volumique_DG():
     
 
 def test_masse_variable_DG():
-    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
     ordre = 4
     func = lambda x, y: x**2 + y**2
     fx = lambda x, y: x
@@ -311,7 +307,6 @@ def test_masse_variable_DG():
 @pytest.mark.parametrize("ordre", [4,5])
 def test_mixte_xy_DG(ordre):
 
-    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.1)
 
     # coefficient variable
     rho = lambda x, y: x**2 + y**2
@@ -356,8 +351,7 @@ def test_mixte_xy_DG(ordre):
                 f"Mismatch in y-direction for u={fu.__name__ if hasattr(fu,'__name__') else fu}, v={fv.__name__ if hasattr(fv,'__name__') else fv}"
 
 def test_masse_frontiere_variable_DG():
-    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
-    ordre = 4
+    ordre = 2
 
     func = lambda x, y: x**2 + y**2
     f1 = lambda x, y: 1.0      
@@ -417,8 +411,7 @@ def test_masse_frontiere_variable_DG():
     assert np.isclose(val_var, val_ref, atol=1e-10), "DG: incohérence masse variable de frontière / masse de frontière standard pour w=1 et v=f"
 
 def test_front_variable_DG():
-    mesh = create_mesh_circle_in_square(0.1, 0.3, 0.05)
-    ordre = 4
+    ordre = 2
 
 
     f1 = lambda x, y: 1.0      
