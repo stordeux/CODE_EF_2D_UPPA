@@ -1398,7 +1398,7 @@ def assemble_skeleton_par_face(mesh, ordre, coef,
 
 
 #################################################################
-### COPIE COLLE POUR FUTURE DEV #################################
+### Assemblage des termes intérieurs ############################
 #################################################################
 
 def assemble_skeleton_par_element(mesh, ordre, coef,

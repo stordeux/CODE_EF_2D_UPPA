@@ -97,7 +97,10 @@ from .assemblage_general import (
     assemble_skeleton_par_face
 )
 from .methode_hyperbolique import (
-    assemble_hyperbo
+    assemble_hyperbo,
+    build_vecteur_nodal_hyperbolique,
+    plot_nodal_vector_hyperbolique,
+    exemple_fonction_vectorielle
 )
 from .calcul_symbolique import (
     build_f_and_grads
@@ -203,6 +206,9 @@ __all__ = [
     "assemble_skeleton_par_element_old",
     "assemble_skeleton_par_face",
     "compute_h_min",
-    "compute_element_sizes"
+    "compute_element_sizes",
+    "build_vecteur_nodal_hyperbolique",
+    "plot_nodal_vector_hyperbolique",
+    "exemple_fonction_vectorielle"
     ]
 __version__ = "0.0.1"

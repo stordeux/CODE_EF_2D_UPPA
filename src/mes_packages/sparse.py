@@ -142,26 +142,128 @@ class COOMatrix:
             result += np.conj(V[i]) * aij * U[j]
         
         return result
-    
-    def spy(self):
+
+    def to_csr_clean(self, tol=0.0):
+        from scipy.sparse import coo_matrix, csr_matrix
+
+        rows = self.rows[:self.l]
+        cols = self.cols[:self.l]
+        data = self.data[:self.l]
+
+        if tol > 0.0:
+            mask = np.abs(data) > tol
+            rows = rows[mask]
+            cols = cols[mask]
+            data = data[mask]
+
+        coo = coo_matrix((data, (rows, cols)),
+                        shape=(self.nb_lig, self.nb_col))
+
+        return csr_matrix(coo)
+
+    def spy_hyperbo(self, d, tol: float = 0.0, secondes: float = 0.0):
+        """
+        Affiche le spy de la matrice avec visualisation des blocs hyperboliques.
+
+        Parameters
+        ----------
+        d : int
+            Nombre de composantes du système hyperbolique.
+        tol : float, optional
+            Seuil sous lequel les coefficients sont ignorés.
+        secondes : float, optional
+            Ferme automatiquement la figure après ce temps (0 = pas de fermeture).
+        """
+
         import matplotlib.pyplot as plt
-        fig, ax = plt.subplots(figsize=(10,10))
-        sizes = (np.ones(self.l, dtype=float) * 1000.0 / max(1, np.max(self.cols[:self.l])))
+        from matplotlib.patches import Rectangle
 
+        self.create_COO()
+
+        if d <= 0:
+            raise ValueError("d doit être > 0.")
+
+        if self.nb_lig % d != 0:
+            raise ValueError(
+                f"Dimension incompatible avec d={d} "
+                f"(nb_lig={self.nb_lig} non divisible par d)."
+            )
+
+        # Taille d’un bloc
+        Nglob = self.nb_lig // d
+
+        # --- Vérifie que le COO existe ---
+        if not hasattr(self, "coo") or self.coo is None:
+            raise RuntimeError("La matrice COO n'est pas construite.")
+
+        csr = self.coo.tocsr()
+
+        # --- nettoyage numérique ---
+        if tol > 0:
+            csr.data[np.abs(csr.data) < tol] = 0.0
+            csr.eliminate_zeros()
         
-        scatter = ax.scatter(self.cols[:self.l], self.rows[:self.l], s=sizes, c=np.abs(self.data[:self.l]), 
-                           cmap='RdBu_r', alpha=0.7)
-        ax.set_aspect('equal')
-        ax.set_title(f"spy de la matrice")
-        ax.set_xlabel('j')
-        ax.set_ylabel('i')
-        plt.colorbar(scatter, ax=ax, label='Valeur')
-        ax.grid(True, alpha=0.4)
+        rows, cols = csr.nonzero()
 
+        fig, ax = plt.subplots(figsize=(8, 8))
+
+        # spy rapide (beaucoup plus performant que plt.spy)
+        ax.plot(cols, rows, '.', color='black', markersize=1, linestyle='None')
+
+        # convention matricielle
+        ax.set_ylim(self.nb_lig, 0)
+        ax.set_xlim(0, self.nb_col)
+        ax.set_aspect('equal')
+
+        # --- dessin des blocs hyperboliques ---
+        for m in range(d):
+            for n in range(d):
+                x0 = n * Nglob
+                y0 = m * Nglob
+
+                rect = Rectangle(
+                    (x0, y0),
+                    Nglob,
+                    Nglob,
+                    fill=False,
+                    edgecolor='red',
+                    linewidth=1.2
+                )
+                ax.add_patch(rect)
+
+        ax.set_title("Spy + structure hyperbolique")
+        ax.set_xlabel("j")
+        ax.set_ylabel("i")
+
+        plt.tight_layout()
+
+        # --- fermeture automatique ---
+        timer = None
+        if secondes > 0:
+            timer = fig.canvas.new_timer(interval=int(1000 * secondes))
+            timer.add_callback(lambda: plt.close(fig))
+            timer.start()
+
+        plt.show()
+
+        return fig, ax
+
+    def spy(self, tol=0.0):
+        import matplotlib.pyplot as plt
+
+        csr = self.to_csr_clean(tol)
+
+        fig, ax = plt.subplots(figsize=(8, 8))
+        ax.spy(csr, markersize=2) # type: ignore[arg-type] sur la ligne du spy.
+
+        ax.set_title("Spy (CSR nettoyée)")
+        ax.set_xlabel("j")
+        ax.set_ylabel("i")
 
         plt.tight_layout()
         plt.show()
         return fig, ax
+
     def __matmul__(self, U):
         """
         Produit matrice-vecteur : F = A @ U

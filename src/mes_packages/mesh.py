@@ -149,7 +149,7 @@ def check_triangle_areas(nodes, triangles, tol=1e-12):
 
     return areas, bad
 
-def plot_mesh(mesh):
+def plot_mesh(mesh,secondes=None):
     triangles = mesh.cells_dict['triangle']
     points = mesh.points[:, :2]
     # Calcul du nombre d'éléments et de sommets
@@ -160,6 +160,11 @@ def plot_mesh(mesh):
     plt.triplot(points[:, 0], points[:, 1], triangles)
     plt.gca().set_aspect('equal')
     plt.title("Maillage du domaine avec un trou circulaire")
+    if secondes is not None:
+        # fermeture automatique après  secondes secondes
+        timer = plt.gcf().canvas.new_timer(interval=1000*secondes)
+        timer.add_callback(plt.close)
+        timer.start()
     plt.show()
 
 
