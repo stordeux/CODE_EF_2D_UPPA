@@ -461,6 +461,19 @@ class COOMatrix:
                 return False, val
 
         return True
+    
+    def is_zero(self, tol=1e-12):
+        """
+        Teste si la matrice est nulle à une tolérance près,
+        après sommation des contributions répétées.
+        """
+        csr = self.to_csr_clean(tol=0.0)
+        csr.sum_duplicates()
+
+        if csr.nnz == 0:
+            return True
+
+        return np.all(np.abs(csr.data) <= tol)
 
     def is_equal(self, other, tol=1e-8):
         """

@@ -15,7 +15,7 @@ MASSE_CG = assemble_volume(mesh, ordre, func, "u", "v", methode="CG")
 # ou 
 # MASSE_CG = build_masse_CG(mesh, ordre, verbose=False)
 
-func = lambda x, y: alpha * 0  # Fonction de test (constante)
+func = lambda x, y: alpha * .5  # Fonction de test (constante)
 MIXTE_CG = assemble_volume(mesh, ordre, func, "dxu", "v", methode="CG")
 
 func = lambda x, y: 1  # Fonction de test (constante)
@@ -23,6 +23,8 @@ RIGIDITE_CGx = assemble_volume(mesh, ordre, func, "dxu", "dxv", methode="CG")
 RIGIDITE_CGy = assemble_volume(mesh, ordre, func, "dyu", "dyv", methode="CG")
 func = lambda x, y: alpha  
 MASSE_BORD_CG = assemble_surface(mesh, ordre, func, "u", "v", methode="CG",domaine="FOURIER")
+
+
 taille_MAT = nombre_dof_CG(mesh, ordre)
 Nnz = RIGIDITE_CGx.nnz + RIGIDITE_CGy.nnz + MASSE_CG.nnz + MASSE_BORD_CG.nnz + MIXTE_CG.nnz
 MAT_EF_CG = COOMatrix(taille_MAT, taille_MAT, Nnz)

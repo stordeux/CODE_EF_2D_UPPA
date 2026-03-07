@@ -541,7 +541,7 @@ def test_positivite_0(ordre):
     MAT_1 = assemble_surface(mesh, ordre, func, "u", "v", methode="DG",domaine="FOURIER")
     # Détermination du type de MAT_1
     print("MAT_1 est de type ", type(MAT_1))
-    ok, lam_min = MAT_1.is_positive()
+    ok = MAT_1.is_positive()
     assert ok, "probleme de positivité"
 
 
@@ -553,7 +553,7 @@ def test_positivite_1(ordre):
     MAT_1 = assemble_surface(mesh, ordre, func, "dnu", "dnv", methode="CG",domaine="FOURIER")
     # Détermination du type de MAT_1
     print("MAT_1 est de type ", type(MAT_1))
-    ok, lam_min = MAT_1.is_positive()
+    ok = MAT_1.is_positive()
     assert ok, "probleme de positivité"
 
 
@@ -565,7 +565,7 @@ def test_positivite_2(ordre):
         MAT_1 = assemble_surface(mesh, ordre, func, "dtu", "dtv", methode="CG",domaine="FOURIER")
         # Détermination du type de MAT_1
         print("MAT_1 est de type ", type(MAT_1))
-        ok, lam_min = MAT_1.is_positive()
+        ok = MAT_1.is_positive()
         assert ok, "probleme de positivité"
 
 @pytest.mark.parametrize("ordre", [1, 2, 3, 4])
@@ -576,7 +576,6 @@ def test_positivite_3(ordre):
     MAT_1 = assemble_surface(mesh, ordre, func, "dxu", "dxv", methode="DG",domaine="FOURIER")
     # Détermination du type de MAT_1
     print("MAT_1 est de type ", type(MAT_1))
-    ok, lam_min = MAT_1.is_positive()
-    print("Valeur minimale de l'autovecteur : ", lam_min)
+    ok = MAT_1.is_positive()
     assert ok, "probleme de positivité"
 
