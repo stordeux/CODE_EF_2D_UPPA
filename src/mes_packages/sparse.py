@@ -346,6 +346,27 @@ class COOMatrix:
         norm_diff = np.abs(diff.data).max() if diff.nnz > 0 else 0.0
         
         return norm_diff < tol
+    
+
+    def is_hermitian(self, tol=1e-10):
+        """
+        Vérifie si la matrice est hermitienne à une tolérance près.
+        """
+        if self.nb_lig != self.nb_col:
+            return False
+
+        self.create_COO()
+
+        diff = (self.coo - self.coo.getH()).tocsr()
+        diff.sum_duplicates()
+
+        if diff.nnz == 0:
+            return True
+
+        diff.data[np.abs(diff.data) <= tol] = 0.0
+        diff.eliminate_zeros()
+
+        return diff.nnz == 0
     def __mul__(self, scalar):
         """
         Multiplie la matrice par un scalaire
@@ -414,42 +435,16 @@ class COOMatrix:
         B.l = self.l
         return B
     
-    def is_zero(self, tol=1e-10):
-        """
-        Teste si la matrice assemblée est numériquement nulle.
-        (après réduction des contributions répétées)
-        """
-        if self.l == 0:
-            return True
-
-        # Passage par SciPy pour réduire les doublons
-        self.create_COO()
-        csr = self.coo.tocsr()
-
-        if csr.nnz == 0:
-            return True
-
-        return np.max(np.abs(csr.data)) <= tol
-    
     def is_positive(self, tol=1e-12):
         """
-        Teste si la matrice est (semi-)définie positive.
-
-        Méthode robuste :
-            - petite matrice → test dense exact
-            - grande matrice → test énergie aléatoire (plus stable que ARPACK)
-
-        Retour :
-            ok, lambda_min_estimee, infos
+        Teste de UTAU pour quelques vecteurs aléatoires (méthode rapide mais pas très robuste)
         """
+
         self.to_csr()
         A = self.csr
         N= self.nb_lig
 
 
-        # --------------------------------------------------
-        # CAS 2 : grande matrice → test variationnel
-        # --------------------------------------------------
         ntests = 20
         lam_min = +np.inf
 
@@ -465,7 +460,7 @@ class COOMatrix:
             if val < -tol:
                 return False, val
 
-        return True, lam_min
+        return True
 
     def is_equal(self, other, tol=1e-8):
         """
@@ -479,3 +474,41 @@ class COOMatrix:
         MAT = MAT + self
         MAT = MAT - other
         return MAT.is_zero(tol=tol)
+
+    def check_positive_definite(self, tol=1e-12):
+        """
+        Teste de UTAU pour quelques vecteurs aléatoires (méthode rapide mais pas très robuste)
+        """
+        self.to_csr()
+        A = self.csr
+        N= self.nb_lig
+
+        # Utilisation de eigsh pour estimer la plus petite valeur propre
+        from scipy.sparse.linalg import eigsh
+        try:
+            eigvals, _ = eigsh(A, k=1, which='SA', tol=tol) # pyright: ignore[reportArgumentType]
+            lam_min = eigvals[0].real
+            ok = lam_min > tol
+        except Exception as e:
+            print("Erreur lors du calcul des valeurs propres :", e)
+            return False, None, None
+        return ok, lam_min, eigvals
+    
+    def is_positive_slow(self, tol=1e-12):
+        """
+        Teste de UTAU pour quelques vecteurs aléatoires (méthode rapide mais pas très robuste)
+        """
+        self.to_csr()
+        A = self.csr
+        N= self.nb_lig
+
+        # Utilisation de eigsh pour estimer la plus petite valeur propre
+        from scipy.sparse.linalg import eigsh
+        try:
+            eigvals, _ = eigsh(A, k=5, which='SA', tol=tol) # pyright: ignore[reportArgumentType]
+            lam_min = eigvals[0].real
+            ok = lam_min > -tol
+        except Exception as e:
+            print("Erreur lors du calcul des valeurs propres :", e)
+            return False, None, None
+        return ok, lam_min, eigvals
