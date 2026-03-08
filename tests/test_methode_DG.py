@@ -12,7 +12,7 @@ from mes_packages import (
 
 radius = 0.1
 square_size = 0.3
-mesh = create_mesh_circle_in_square(radius, square_size,    mesh_size=0.04)
+mesh = create_mesh_circle_in_square(radius, square_size,    mesh_size=0.05)
 
 def test_loctoglob_DG():
     # Recuperation de la géométrie du maillage
