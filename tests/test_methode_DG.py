@@ -453,8 +453,8 @@ def test_front_variable_DG():
     nnz = M_front.nnz
     ndof = M_front.shape[0]
     Msomme = COOMatrix(ndof, ndof, 3*nnz)
-    Msomme = Msomme + M_var_front_DG_Fou
-    Msomme = Msomme + M_var_front_DG_Neu
+    Msomme +=  M_var_front_DG_Fou
+    Msomme +=  M_var_front_DG_Neu
     func = lambda x, y: x**2+y**2
     V = build_nodal_vector_DG(func, mesh, ordre)
     assert np.allclose(Msomme.sesquilinear_form(V,V),M_front.sesquilinear_form(V,V), atol=1e-10), "DG: la somme des matrices de Fourier et Neumann doit être égale à la matrice de frontière standard"

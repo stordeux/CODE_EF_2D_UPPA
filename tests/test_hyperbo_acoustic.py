@@ -46,9 +46,9 @@ def test_sol_volume_acoustique(ordre):
     # plot_nodal_vector_hyperbolique(mesh, vec_nodal, d=3, ordre=ordre, methode="DG")
 
     MAT = COOMatrix(MASSE_H.shape[0], MASSE_H.shape[1], MASSE_H.nnz + F1D1.nnz + F2D2.nnz)  # Estimation du nombre d'entrées non nulles
-    MAT = MAT + MASSE_H 
-    MAT = MAT + F1D1 
-    MAT = MAT + F2D2
+    MAT += MASSE_H 
+    MAT += F1D1 
+    MAT += F2D2
 
     assert np.linalg.norm(MAT@vec_nodal)<10**(-ordre+1), "Le vecteur nodal n'est pas une solution approchée du système hyperbolique."
 

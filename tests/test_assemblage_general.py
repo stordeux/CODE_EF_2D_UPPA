@@ -25,8 +25,8 @@ def test_assemble_volume_equals_build_masse_CG():
     nnz_est = MAT_1.l + MAT_2.l
 
     MAT = COOMatrix(N_glob, N_glob, nnz_est)
-    MAT = MAT + MAT_1.copy()
-    MAT = MAT - MAT_2.copy()
+    MAT += MAT_1.copy()
+    MAT -= MAT_2.copy()
 
     assert MAT.is_zero(tol=1e-12), \
         "assemble_volume (u,v) ne reproduit pas build_masse_CG"
@@ -55,9 +55,9 @@ def test_assemble_volume_equals_build_rigidite_CG():
     nnz_est = MAT_1xx.l + MAT_1yy.l + MAT_2.l
 
     MAT = COOMatrix(N_glob, N_glob, nnz_est)
-    MAT = MAT + MAT_1xx
-    MAT = MAT + MAT_1yy
-    MAT = MAT - MAT_2
+    MAT +=  MAT_1xx
+    MAT += MAT_1yy
+    MAT -= MAT_2
 
     assert MAT.is_zero(tol=1e-12), "problème avec la matrice de rigidité CG"
 
@@ -88,8 +88,8 @@ def test_assemble_volume_equals_build_masse_DG():
     nnz_est = MAT_1.l + MAT_2.l
 
     MAT = COOMatrix(N_glob, N_glob, nnz_est)
-    MAT = MAT + MAT_1.copy()
-    MAT = MAT - MAT_2.copy()
+    MAT += MAT_1.copy()
+    MAT -= MAT_2.copy()
 
     assert MAT.is_zero(tol=1e-12), \
         "assemble_volume (u,v) ne reproduit pas build_masse_DG"
@@ -118,16 +118,16 @@ def test_assemble_volume_equals_build_mixte_DG():
     nnz_est = MAT_1x.l + MAT_2x.l
 
     MATx = COOMatrix(N_glob, N_glob, nnz_est)
-    MATx = MATx + MAT_1x.copy()
-    MATx = MATx - MAT_2x.copy()
+    MATx += MAT_1x.copy()
+    MATx -= MAT_2x.copy()
 
     assert MATx.is_zero(tol=1e-12), \
         "assemble_volume (dxu,v) ne reproduit pas build_mixte_DG"
     
 
     MATy = COOMatrix(N_glob, N_glob, nnz_est)
-    MATy = MATy + MAT_1y.copy()
-    MATy = MATy - MAT_2y.copy()
+    MATy += MAT_1y.copy()
+    MATy -= MAT_2y.copy()
 
     assert MATy.is_zero(tol=1e-12), \
         "assemble_volume (dyu,v) ne reproduit pas build_mixte_DG"
@@ -146,8 +146,8 @@ def test_masse_variable_DG():
     N_glob = MAT_1.shape[0]
     nnz_est = MAT_1.l + MAT_2.l
     MAT = COOMatrix(N_glob, N_glob, nnz_est)
-    MAT = MAT + MAT_1
-    MAT = MAT - MAT_2
+    MAT += MAT_1
+    MAT -= MAT_2
     assert MAT.is_zero(tol=1e-12), "problème d'assemblage de la matrice variable DG"
 
 def test_mixte_variable_DG():
@@ -162,15 +162,15 @@ def test_mixte_variable_DG():
     N_glob = MAT_1x.shape[0]
     nnz_est = MAT_1x.l + MAT_2x.l
     MATx = COOMatrix(N_glob, N_glob, nnz_est)
-    MATx = MATx + MAT_1x
-    MATx = MATx - MAT_2x
+    MATx += MAT_1x
+    MATx -= MAT_2x
     assert MATx.is_zero(tol=1e-12), "problème d'assemblage de la matrice variable mixte DG (dxu,v)"
     
     N_glob = MAT_1y.shape[0]
     nnz_est = MAT_1y.l + MAT_2y.l
     MAty = COOMatrix(N_glob, N_glob, nnz_est)
-    MAty = MAty + MAT_1y
-    MAty = MAty - MAT_2y
+    MAty += MAT_1y
+    MAty -= MAT_2y
     assert MAty.is_zero(tol=1e-12), "problème d'assemblage de la matrice variable mixte DG (dyu,v)"
 
 

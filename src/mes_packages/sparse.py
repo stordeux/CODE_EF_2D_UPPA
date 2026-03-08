@@ -65,7 +65,7 @@ class COOMatrix:
         return x #.reshape((self.nb_lig, 1))    
 
 
-    def __add__(self, other):
+    def __iadd__(self, other):
         """
         Ajoute à self la matrice other
 
@@ -484,8 +484,8 @@ class COOMatrix:
             return False
         
         MAT= COOMatrix(self.shape[0], self.shape[1], self.l + other.l)
-        MAT = MAT + self
-        MAT = MAT - other
+        MAT += self
+        MAT -= other
         return MAT.is_zero(tol=tol)
 
     def check_positive_definite(self, tol=1e-12):

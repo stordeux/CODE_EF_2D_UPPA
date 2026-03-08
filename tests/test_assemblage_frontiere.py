@@ -33,8 +33,8 @@ def test_assemble_surface_equals_build_masse_frontiere_CG():
     nnz_est = MAT_1.l + MAT_2.l
 
     MAT = COOMatrix(N_glob, N_glob, nnz_est)
-    MAT = MAT + MAT_1.copy()
-    MAT = MAT - MAT_2.copy()
+    MAT +=  MAT_1.copy()
+    MAT -= MAT_2.copy()
 
     assert MAT.is_zero(tol=1e-6), \
         "assemble_surface CG (masse frontière constante) diffère de build_masse_frontiere_CG"
@@ -76,8 +76,8 @@ def test_assemble_surface_FOURIER():
     nnz_est = MAT_1.l + MAT_2.l
 
     MAT = COOMatrix(N_glob, N_glob, nnz_est)
-    MAT = MAT + MAT_1.copy()
-    MAT = MAT - MAT_2.copy()
+    MAT += MAT_1.copy()
+    MAT -= MAT_2.copy()
 
     assert MAT.is_zero(tol=1e-6), \
         "assemble_surface CG (FOURIER) diffère de build_masse_frontiere_CG"
@@ -101,8 +101,8 @@ def test_assemble_surface_NEUMANN():
     nnz_est = MAT_1.l + MAT_2.l
 
     MAT = COOMatrix(N_glob, N_glob, nnz_est)
-    MAT = MAT + MAT_1.copy()
-    MAT = MAT - MAT_2.copy()
+    MAT += MAT_1.copy()
+    MAT -=  MAT_2.copy()
 
     assert MAT.is_zero(tol=1e-6), \
         "assemble_surface CG (NEUMANN) diffère de build_masse_frontiere_CG"

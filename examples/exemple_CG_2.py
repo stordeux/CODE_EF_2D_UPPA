@@ -43,7 +43,7 @@ MAT_EF_CG = COOMatrix(taille_MAT, taille_MAT, Nnz)
 MAT_EF_CG += RIGIDITE_CGx
 MAT_EF_CG += RIGIDITE_CGy
 kappa2_MASSE_CG = kappa**2 * MASSE_CG
-MAT_EF_CG =MAT_EF_CG- kappa2_MASSE_CG
+MAT_EF_CG -= kappa2_MASSE_CG
 ik_MASSE_BORD_CG_FOURIER = alpha * MASSE_BORD_CG_FOURIER
 MAT_EF_CG += ik_MASSE_BORD_CG_FOURIER
 # Construction du terme source

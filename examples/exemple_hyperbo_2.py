@@ -14,20 +14,20 @@ ZERO = lambda x, y: 0.0
 Lambda = .1
 kappa = 2*np.pi/Lambda
 
-f = lambda x, y: 1 
+UN = lambda x, y: 1 
 g = lambda x, y: 1 
 h = lambda x, y: -1.j * kappa
 
 
 F0=np.array([
-        [h, ZERO, ZERO],
-        [ZERO, h, ZERO],
-        [ZERO, ZERO, h]
+        [UN, ZERO, ZERO],
+        [ZERO, UN, ZERO],
+        [ZERO, ZERO, UN]
     ], dtype=object)
 
 Fx = np.array([
-        [ZERO, f, ZERO],
-        [f, ZERO, ZERO],
+        [ZERO, UN, ZERO],
+        [UN, ZERO, ZERO],
         [ZERO, ZERO, ZERO]
     ], dtype=object)
 Fy = np.array([
@@ -51,10 +51,10 @@ MATfront = COOMatrix(taille, taille,nnz)  # Estimation du nombre d'entrées non 
 
 # plot_nodal_vector_hyperbolique(mesh, vec_nodal, d=3, ordre=ordre, methode="DG")
 
-MATfront = MATfront + FpartialOmeganx
-MATfront = MATfront + FpartialOmegany
-MATfront = MATfront + Finterieurnx
-MATfront = MATfront + Finterieurny
+MATfront += FpartialOmeganx
+MATfront += FpartialOmegany
+MATfront += Finterieurnx
+MATfront += Finterieurny
 
 
 # print(np.linalg.norm(MAT@vec_nodal))

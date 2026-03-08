@@ -20,8 +20,8 @@ def test_assemble_skeleton_1(ordre):
     # Ancien : build_jump_matrix_DG
     A_old = build_jump_matrix_DG(mesh, ordre, verbose=False)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT += A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-12), "problème d'assemblage de la matrice de squelette (jump-jump)"
 
 @pytest.mark.parametrize("ordre", [1,2,3,4])
@@ -42,8 +42,8 @@ def test_assemble_skeleton_2(ordre):
     # Ancien : build_jump_matrix_DG
     A_old = build_jump_matrix_DG(mesh, ordre, verbose=False)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT += A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-12), "problème d'assemblage de la matrice de squelette (jump-jump)"
     
 @pytest.mark.parametrize("ordre", [1,2,3,4])
@@ -64,8 +64,8 @@ def test_assemble_skeleton_par_face_1(ordre):
     # Ancien : build_jump_matrix_DG
     A_old = build_jump_matrix_DG(mesh, ordre, verbose=False)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT +=   A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-12), "problème d'assemblage de la matrice de squelette (jump-jump)"
     
 @pytest.mark.parametrize("ordre", [1,2,3,4])
@@ -86,6 +86,6 @@ def test_assemble_skeleton_par_face_2(ordre):
     # Ancien : build_jump_matrix_DG
     A_old = build_jump_matrix_DG(mesh, ordre, verbose=False)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT += A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-12), "problème d'assemblage de la matrice de squelette (jump-jump)"

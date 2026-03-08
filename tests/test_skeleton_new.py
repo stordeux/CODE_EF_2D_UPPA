@@ -17,8 +17,8 @@ def test_assemble_skeleton_1(ordre):
                               methode="DG")
     A_new.is_symmetric(tol=1e-8)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT += A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-8), "problème d'assemblage de la matrice de squelette (jump-jump)"
 
 @pytest.mark.parametrize("ordre", [1,2,3,4])
@@ -33,8 +33,8 @@ def test_assemble_skeleton_2(ordre):
                               methode="DG")
     A_new.is_symmetric(tol=1e-8)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT += A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-8), "problème d'assemblage de la matrice de squelette (jump-jump)"
 
 
@@ -50,8 +50,8 @@ def test_assemble_skeleton_3(ordre):
                               methode="DG")
     A_new.is_symmetric(tol=1e-8)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT += A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-8), "problème d'assemblage de la matrice de squelette (jump-jump)"
 
 
@@ -67,8 +67,8 @@ def test_assemble_skeleton_4p(ordre):
                               methode="DG")
     A_new.is_symmetric(tol=1e-8)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT += A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-8), "problème d'assemblage de la matrice de squelette (jump-jump)"
 
 
@@ -85,8 +85,8 @@ def test_assemble_skeleton_4(ordre,beta):
                               methode="DG")
     A_new.is_symmetric(tol=1e-8)
     MAT= COOMatrix(A_new.shape[0], A_new.shape[1], A_new.l + A_old.l)
-    MAT = MAT + A_new
-    MAT = MAT - A_old
+    MAT += A_new
+    MAT -= A_old
     assert MAT.is_zero(tol=1e-8), "problème d'assemblage de la matrice de squelette (jump-jump)"
 
 @pytest.mark.parametrize("ordre", [1,2,3,4])

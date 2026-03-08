@@ -434,11 +434,17 @@ def plot_on_mesh_function(func, mesh, ordre, flag_maillage=True):
     plt.colorbar(tcf1, ax=ax1, label="u")
     plt.show()
     
-def plot_nodal_vector_DG(U, mesh, ordre, title,flag_maillage=True):
+def plot_nodal_vector_DG(U, mesh, ordre, title, flag_maillage=True, secondes=0):
     """
     Affiche un vecteur nodal DG complexe en créant des sous-triangles avec les DDL.
     Représentation P1 continue sur chaque sous-triangle (tripcolor gouraud).
-    Génère deux figures : une avec maillage, une sans, chacune en 3 frames:
+
+    Paramètre secondes :
+        - secondes > 0 : la figure se ferme automatiquement après ce temps
+        - secondes = 0 : affichage non bloquant, fermeture immédiate
+        - secondes < 0 : affichage bloquant classique
+
+    Génère une figure en 3 panneaux :
     - partie réelle
     - partie imaginaire
     - module
@@ -448,16 +454,14 @@ def plot_nodal_vector_DG(U, mesh, ordre, title,flag_maillage=True):
     import matplotlib.pyplot as plt
 
     Nloc = (ordre + 1) * (ordre + 2) // 2
-    # Recuperation de la géométrie du maillage
-    points = mesh.points[:, :2]  # On ne garde que les coordonnées x et y
-    triangles = np.asarray(mesh.cells_dict["triangle"]) # mesh.cells_dict["triangle"]        
+
+    # Récupération de la géométrie du maillage
+    points = mesh.points[:, :2]
+    triangles = np.asarray(mesh.cells_dict["triangle"])
     loctoglob_DG, n_glob_DG = build_loctoglob_DG(mesh, ordre)
     dof_coords = build_dof_coordinates_DG(mesh, ordre)
 
-
     U = np.asarray(U)
-
-    Nloc = (ordre + 1) * (ordre + 2) // 2
 
     # Listes pour stocker tous les points et sous-triangles
     all_X = []
@@ -470,7 +474,7 @@ def plot_nodal_vector_DG(U, mesh, ordre, title,flag_maillage=True):
         # Récupérer les coordonnées et valeurs aux DDL du triangle
         X_dof = np.zeros(Nloc)
         Y_dof = np.zeros(Nloc)
-        Z_dof = np.zeros(Nloc, dtype=np.complex128)  # **CHANGÉ**
+        Z_dof = np.zeros(Nloc, dtype=np.complex128)
 
         for iloc in range(Nloc):
             iglob = loctoglob_DG[iT, iloc]
@@ -490,7 +494,6 @@ def plot_nodal_vector_DG(U, mesh, ordre, title,flag_maillage=True):
 
                 all_triangles.append([offset + i0, offset + i1, offset + i2])
 
-                # Triangle "inversé" si nécessaire
                 if m + n + 1 < ordre:
                     i3 = loc2D_to_loc1D(m + 1, n + 1)
                     all_triangles.append([offset + i1, offset + i3, offset + i2])
@@ -500,7 +503,7 @@ def plot_nodal_vector_DG(U, mesh, ordre, title,flag_maillage=True):
     # Créer la triangulation
     X_array = np.array(all_X)
     Y_array = np.array(all_Y)
-    Z_array = np.array(all_Z, dtype=np.complex128)  # **CHANGÉ**
+    Z_array = np.array(all_Z, dtype=np.complex128)
     tri = Triangulation(X_array, Y_array, all_triangles)
 
     # Préparer les 3 champs réels à afficher
@@ -510,30 +513,42 @@ def plot_nodal_vector_DG(U, mesh, ordre, title,flag_maillage=True):
         (np.abs(Z_array),  "module", "|u|")
     ]
 
-
-    # ---------- Figure 2 : Avec maillage (3 frames) ----------
+    # Figure avec 3 panneaux
     fig2, ax2 = plt.subplots(1, 3, figsize=(18, 6))
 
     for k, (Zk, label_long, cblabel) in enumerate(champs):
         tcf2 = ax2[k].tripcolor(
             tri, Zk,
-            cmap='viridis',
-            shading='gouraud',
-            edgecolors='k',
-            linewidths=0.5
+            cmap="viridis",
+            shading="gouraud"
         )
+
         if flag_maillage:
-            ax2[k].triplot(points[:, 0], points[:, 1], triangles, 'k-',
-                       linewidth=1, alpha=0.4)
+            ax2[k].triplot(
+                points[:, 0], points[:, 1], triangles,
+                "k-", linewidth=1, alpha=0.4
+            )
+
         ax2[k].set_aspect("equal")
         ax2[k].set_xlabel("x")
         ax2[k].set_ylabel("y")
-        ax2[k].set_title(f"DG : {title} ({label_long}) — avec maillage" if title
-                         else f"DG : représentation P1 ({label_long}) — avec maillage")
+        ax2[k].set_title(
+            f"DG : {title} ({label_long}) — avec maillage"
+            if title else f"DG : représentation P1 ({label_long}) — avec maillage"
+        )
         plt.colorbar(tcf2, ax=ax2[k], label=cblabel)
 
     plt.tight_layout()
-    plt.show()
+
+    # Gestion de l'affichage
+    if secondes > 0:
+        timer = fig2.canvas.new_timer(interval=int(1000 * secondes))
+        timer.add_callback(plt.close, fig2)
+        timer.start()
+        plt.show()
+
+    else:
+        plt.show()
 
     return fig2, ax2
 
@@ -1168,7 +1183,7 @@ def build_matrice_masse_frontière_DG(mesh,ordre):
             if V == -1:  # Face de bord            
                 MTT = build_masse_frontiere_elt_DG(T, F, ordre, loctoglob_DG, points, triangles, M_ref_1D)
                 # Ajouter à la matrice globale
-                M_boundary = M_boundary + MTT
+                M_boundary += MTT
         
     return M_boundary
 
@@ -1264,8 +1279,8 @@ def build_jump_matrix_DG(mesh,ordre:int, verbose=False):
                 MTV = build_boundary_mass_TV(T, F, ordre, triangles, points, neighbors, neighbor_faces, M_ref_1D)
                 
                 # Ajouter : ∫_F (u_T - u_V) v̄_T = ∫_F u_T v̄_T - ∫_F u_V v̄_T
-                MAT_saut = MAT_saut + MTT   # +MTT
-                MAT_saut = MAT_saut - MTV   # -MTV
+                MAT_saut += MTT   # +MTT
+                MAT_saut -= MTV   # -MTV
                 
             else:  # Face de bord
                 n_faces_bord += 1

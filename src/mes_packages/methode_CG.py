@@ -728,7 +728,7 @@ def termes_source_frontiere_CG(func,mesh, ordre:int,domaine="all"):
 
     return F_boundary_CG
 
-def plot_nodal_vector_CG(U_CG, mesh, ordre:int, title:str, flag_maillage=True):
+def plot_nodal_vector_CG(U_CG, mesh, ordre:int, title:str, flag_maillage=True, secondes=0):
     """
     Visualise un vecteur nodal C0 en le convertissant en DG, puis en appelant
     la routine de tracé DG.
@@ -737,7 +737,7 @@ def plot_nodal_vector_CG(U_CG, mesh, ordre:int, title:str, flag_maillage=True):
     # DDL locaux et géométrie du maillage
     # Conversion C0 -> DG, puis tracé DG
     U_DG = nodal_CG_to_DG(U_CG, mesh, ordre)
-    plot_nodal_vector_DG(U_DG, mesh, ordre, title, flag_maillage)
+    plot_nodal_vector_DG(U_DG, mesh, ordre, title, flag_maillage, secondes)
     
 def plot_support_terme_source(F_CG, mesh, ordre:int):
     # DDL locaux et géométrie du maillage

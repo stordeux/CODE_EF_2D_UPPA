@@ -28,7 +28,7 @@ def test_addition_inplace():
     Mat2.ajout(0,3,2.0)
     Mat2.ajout(0,3,np.pi)
     Mat2dense = Mat2.to_dense()
-    Mat=Mat+Mat2
+    Mat+=Mat2
     Mat=Mat3dense = Mat.to_dense()
     TEST= np.allclose(Mat3dense, Mat1dense + Mat2dense)
 
