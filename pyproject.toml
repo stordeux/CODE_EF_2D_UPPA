@@ -19,7 +19,10 @@ dependencies = [
   "sympy",
   "meshio",
   "gmsh",
-  "shapely"
+  "shapely",
+  "mkdocs",
+  "mkdocs-material",
+  "pymdown-extensions"
 ]
 [project.optional-dependencies]
 test = ["pytest>=7"]

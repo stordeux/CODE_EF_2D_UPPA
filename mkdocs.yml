@@ -1,0 +1,40 @@
+site_name: CODE_EF_2D_UPPA
+site_description: Finite Element Methods in 2D
+site_author: Sebastien Tordeux
+
+theme:
+  name: material
+
+extra_css:
+  - stylesheets/extra.css
+
+markdown_extensions:
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+
+extra_javascript:
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+nav:
+  - Accueil: index.md
+  - Installation: installation.md
+  - Théorie des éléments finis: fem.md
+
+  - Exemples:
+      - Exemple CG 2: exemple_CG2.md
+      - Exemple SIPDG: exemple_SIPDG.md
+      - Exemple hyperbolique: exemple_hyperbo.md
+      - Exemple hyperbolique 2: exemple_hyperbo_2.md
+
+  - API:
+      - Assemblage des matrices volumiques: assemble_volume.md
+      - Assemblage des matrices de bord: assemble_surface.md
+      - Assemblage du matrices sur le squelette:
+        - par élément : assemble_skeleton_element.md
+        - par face : assemble_skeleton_face.md

@@ -61,9 +61,9 @@ print("vecteur nodal construit.")
 # plot_nodal_vector_hyperbolique(mesh, vec_nodal, d=3, ordre=ordre, methode="DG")
 
 MAT = COOMatrix(MASSE_H.shape[0], MASSE_H.shape[1], MASSE_H.nnz + F1D1.nnz + F2D2.nnz)  # Estimation du nombre d'entrées non nulles
-MAT = MAT + MASSE_H 
-MAT = MAT + F1D1 
-MAT = MAT + F2D2
+MAT += MASSE_H 
+MAT += F1D1 
+MAT += F2D2
 
 print(np.linalg.norm(MAT@vec_nodal))
 

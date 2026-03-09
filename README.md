@@ -108,54 +108,141 @@ Make sure the Jupyter kernel uses the virtual environment ".venv".
 
 REPOSITORY STRUCTURE
 
-    project_root/
-    │
-    ├── pyproject.toml          # Package configuration (PEP 517/518)
-    ├── README.md               # Project documentation
-    ├── LICENSE                 # License file
-    │
-    ├── src/                    # Source layout (import isolation)
-    │   └── mes_packages/       # Finite element library
-    │       ├── __init__.py
-    │       ├── base.py
-    │       ├── calcul_symbolique.py
-    │       ├── matrice_reference.py
-    │       ├── mesh.py          (un exemple de creation de maillage et des fonctionnalités)
-    │       ├── methode_CG.py    (des fonctionnalité pour les CG)
-    │       ├── methode_DG.py    (des fonctionnalité pour les DG)
-    │       ├── methode_hyperbolique.py
-    │       ├── quadrature.py
-    │       ├── sparse.py         (gestion facile des matrices sparse)
-    |       ├── assemblage_general.py    (construction de toutes les matrices DG et CG)
-    │
-    ├── tests/                  # Unit tests (pytest)
-    │   ├── test_base.py
-    │   ├── test_calcul_symbolique.py
-    │   ├── test_matrice_reference.py
-    │   ├── test_mesh.py
-    │   ├── test_methode_CG.py
-    │   ├── test_methode_DG.py
-    │   ├── test_quadrature.py
-    │   ├── test_sparse.py
-    |   ├── test_assemblage_general.py
-    │
-    ├── examples/               # Jupyter notebooks demonstrating usage
-    │   ├── exemple_CG.ipynb
-    │   ├── exemple_DG.ipynb
-    │   ├── exemple_hyperbo.ipynb
-    │   ├── exemple_mesh.ipynb
-    │   ├── exemple_normale_triange.ipynb
-    │   ├── exemple_quadrature.ipynb
-    │   ├── exemple_reference.ipynb
-    │   ├── exemple_sparse.ipynb
-    │   ├── exemple_matrices_locales.ipynb
-    │   ├── exemple_matrice_face_dun_triangle_DG.ipynb
-    │   ├── exemple_matrice_saut_DG.ipynb
-    │   └── exemple.visu.ipynb
-    │
-    ├── notebooks/              # (Optional) teaching notebooks or research drafts
-    │
-    └── .gitignore              # Ignored files (cache, venv, build artifacts)
+project_root/
+│
+├── mkdocs.yml                # configuration MkDocs pour générer la documentation
+├── docs/                     # sources Markdown de la documentation
+│   └── exemple_CG2.md        # page d’exemple pour la méthode CG
+├── site/                     # documentation HTML générée par MkDocs
+│   ├── 404.html              # page 404 par défaut
+│   ├── sitemap.xml           # plan du site
+│   ├── sitemap.xml.gz        # version compressée du plan du site
+│   └── search/               # index de recherche pour la doc
+│
+├── pyproject.toml            # configuration du paquet (PEP 517/518)
+├── README.md                 # présentation et instructions
+├── LICENSE                   # licence du projet
+│
+├── src/                      # code source du paquet
+│   ├── bib_code_ef.egg-info/ # métadonnées générées pour le packaging
+│   └── mes_packages/         # bibliothèque éléments finis
+│       ├── __init__.py
+│       ├── assemblage_general.py    # assemblage DG et CG
+│       ├── base.py                  # classes et outils de base
+│       ├── calcul_symbolique.py     # calculs symboliques
+│       ├── matrice_reference.py     # matrices de référence
+│       ├── mesh.py                  # génération et outils de maillage
+│       ├── methode_CG.py            # routines Galerkin continu
+│       ├── methode_DG.py            # routines Galerkin discontinu
+│       ├── methode_hyperbolique.py  # équations hyperboliques
+│       ├── quadrature.py            # routines de quadrature/intégration
+│       └── sparse.py                # opérations sur matrices creuses
+│
+├── tests/                    # tests unitaires (pytest)
+│   ├── test_base.py
+│   ├── test_calcul_symbolique.py
+│   ├── test_matrice_reference.py
+│   ├── test_mesh.py
+│   ├── test_methode_CG.py
+│   ├── test_methode_DG.py
+│   ├── test_quadrature.py
+│   ├── test_sparse.py
+│   ├── test_assemble_surface_rhs.py
+│   ├── test_hyperbo_acoustic.py
+│   ├── test_skeleton.py
+│   ├── test_skeleton_new.py
+│   ├── test_terme_source.py
+│   └── test_assemblage_general.py
+│
+├── examples/                 # notebooks et scripts d’exemple
+│   ├── exemple_CG.ipynb
+│   ├── exemple_DG.ipynb
+│   ├── exemple_hyperbo.ipynb
+│   ├── exemple_mesh.ipynb
+│   ├── exemple_normale_triange.ipynb
+│   ├── exemple_quadrature.ipynb
+│   ├── exemple_reference.ipynb
+│   ├── exemple_sparse.ipynb
+│   ├── exemple_matrices_locales.ipynb
+│   ├── exemple_matrice_face_dun_triangle_DG.ipynb
+│   ├── exemple_matrice_saut_DG.ipynb
+│   ├── exemple_CG_2.py
+│   ├── exemple_CG_aeroac.py
+│   ├── exemple_CG_diffraction_all.py
+│   ├── exemple_CG_diffraction_fourier.py
+│   ├── exemple_hyperbo_2.py
+│   ├── exemple_mesh_marquage_frontière.ipynb
+│   ├── exemple_SIPDG.py
+│   ├── exemple_assemblage_masse_et_rigidite.py
+│   ├── exemple_assemblage_surface.py
+│   ├── exemple_assemblage_terme_source_volumique.py
+│   ├── exemple_box.py
+│   ├── exemple.visu.ipynb
+│   └── …                     # autres exemples et scripts
+│
+├── notebooks/               # (optionnel) notebooks pédagogiques ou de recherche
+│
+├── .vscode/                 # configuration pour VS Code
+├── .pytest_cache/           # cache de pytest (généré automatiquement)
+├── .venv/                   # environnement virtuel local
+├── test.py                  # script utilitaire
+├── EF_2D_statique.ipynb     # exemple statique d’éléments finis
+└── .gitignore               # fichiers/directoires ignorés par Git
+---
+
+DOCUMENTATION
+
+The project includes a complete documentation written in Markdown and built
+using **MkDocs**.
+
+The documentation explains:
+
+- the mathematical formulation of the methods
+- the structure of the finite element library
+- the Continuous Galerkin (CG) and Discontinuous Galerkin (DG) implementations
+- practical examples from the course
+
+The documentation source files are located in:
+
+    docs/
+
+and configured through:
+
+    mkdocs.yml
+
+---
+
+BUILDING THE DOCUMENTATION
+
+After installing the library in the virtual environment, the documentation
+can be served locally.
+
+Start the documentation server:
+
+    mkdocs serve
+
+Then open the following address in your web browser:
+
+    http://127.0.0.1:8000
+
+The documentation will automatically update when Markdown files in `docs/`
+are modified.
+
+---
+
+GENERATING THE STATIC DOCUMENTATION
+
+To generate the static HTML version of the documentation:
+
+    mkdocs build
+
+This command creates the directory:
+
+    site/
+
+which contains the full HTML documentation that can be opened locally or
+deployed on a web server (for example GitHub Pages).
+
 
 ---
 
