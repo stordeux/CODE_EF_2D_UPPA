@@ -244,6 +244,12 @@ which contains the full HTML documentation that can be opened locally or
 deployed on a web server (for example GitHub Pages).
 
 
+## Documentation
+
+The full documentation is available here:
+
+https://stordeux.github.io/CODE_EF_2D_UPPA/
+
 ---
 
 DEVELOPMENT WORKFLOW

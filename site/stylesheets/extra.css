@@ -1,0 +1,14 @@
+.md-typeset h1 {
+  color: #7a0000;
+  border-bottom: 2px solid #c00000;
+  padding-bottom: 0.4em;
+  margin-bottom: 1em;
+}
+
+.md-typeset h2 {
+  color: #c00000; /* rouge */
+}
+
+.md-typeset h3 {
+  color: #e06a8d; /* rose */
+}

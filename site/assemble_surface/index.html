@@ -13,10 +13,10 @@
       
       
       
-        <link rel="prev" href="../fem/">
+        <link rel="prev" href="../assemble_volume/">
       
       
-        <link rel="next" href="../assemble_volume/">
+        <link rel="next" href="../assemble_skeleton_element/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Exemple CG 2 - CODE_EF_2D_UPPA</title>
+        <title>Assemblage des matrices de bord - CODE_EF_2D_UPPA</title>
       
     
     
@@ -70,7 +70,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#exemple-resolution-de-lequation-de-helmholtz-par-elements-finis-cg" class="md-skip">
+        <a href="#assemble_surface" class="md-skip">
           Skip to content
         </a>
       
@@ -106,7 +106,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Exemple CG 2
+              Assemblage des matrices de bord
             
           </span>
         </div>
@@ -280,20 +280,18 @@
       
   
   
-    
   
   
-  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
         
           
           <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
@@ -314,7 +312,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_4">
             <span class="md-nav__icon md-icon"></span>
             
@@ -329,19 +327,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../exemple_CG2/" class="md-nav__link">
         
   
   
@@ -357,7 +346,6 @@
   
 
       </a>
-      
     </li>
   
 
@@ -458,18 +446,20 @@
       
   
   
+    
   
   
+  
     
     
     
     
     
-    <li class="md-nav__item md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
         
           
           <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
@@ -490,7 +480,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_5">
             <span class="md-nav__icon md-icon"></span>
             
@@ -533,10 +523,37 @@
                 
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../assemble_surface/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Assemblage des matrices de bord
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -552,6 +569,175 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parametres" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Paramètres
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Paramètres">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mesh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ordre" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ordre
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#func" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        func
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operatoru" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        operatoru
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operatorv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        operatorv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        methode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#domaine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        domaine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#principe-de-lalgorithme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Principe de l’algorithme
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exemple" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exemple
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#remarques" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remarques
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -695,6 +881,163 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#signature" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Signature
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parametres" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Paramètres
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Paramètres">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#mesh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        mesh
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#ordre" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ordre
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#func" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        func
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operatoru" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        operatoru
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#operatorv" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        operatorv
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#methode" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        methode
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#domaine" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        domaine
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#retour" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Retour
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#principe-de-lalgorithme" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Principe de l’algorithme
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#exemple" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Exemple
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#remarques" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Remarques
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -710,188 +1053,139 @@
 
 
 
-<h1 id="exemple-resolution-de-lequation-de-helmholtz-par-elements-finis-cg">Exemple : résolution de l'équation de Helmholtz par éléments finis CG<a class="headerlink" href="#exemple-resolution-de-lequation-de-helmholtz-par-elements-finis-cg" title="Permanent link">&para;</a></h1>
-<p>Cet exemple illustre l'utilisation de la bibliothèque <code>mes_packages</code>
-pour résoudre numériquement une équation de Helmholtz avec une condition
-de Fourier (Robin) sur le bord du domaine.</p>
-<hr />
-<h1 id="1-domaine-et-maillage">1. Domaine et maillage<a class="headerlink" href="#1-domaine-et-maillage" title="Permanent link">&para;</a></h1>
-<p>On considère un domaine constitué d'un carré contenant un trou circulaire :</p>
+<h1 id="assemble_surface">assemble_surface<a class="headerlink" href="#assemble_surface" title="Permanent link">&para;</a></h1>
+<p>La fonction <code>assemble_surface</code> assemble une matrice globale associée à une intégrale de bord de la forme</p>
 <div class="arithmatex">\[
-\Omega = [-4,4]^2 \setminus B(0,1)
-\]</div>
-<p>Le maillage est généré par</p>
-<div class="highlight"><pre><span></span><code><span class="n">mesh</span> <span class="o">=</span> <span class="n">create_mesh_circle_in_square</span><span class="p">(</span><span class="n">radius</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">square_size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">mesh_size</span><span class="o">=</span><span class="mf">0.25</span><span class="p">)</span>
-<span class="n">plot_mesh</span><span class="p">(</span><span class="n">mesh</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h1 id="2-probleme-mathematique">2. Problème mathématique<a class="headerlink" href="#2-probleme-mathematique" title="Permanent link">&para;</a></h1>
-<p>On cherche</p>
-<div class="arithmatex">\[
-u : \Omega \rightarrow \mathbb{C}
-\]</div>
-<p>solution de</p>
-<div class="arithmatex">\[
--\Delta u - \kappa^2 u = f
-\qquad \text{dans } \Omega
-\]</div>
-<p>avec la condition de Fourier</p>
-<div class="arithmatex">\[
-\partial_n u + i\kappa u = 0
-\qquad \text{sur } \Gamma
+A_{ij}=\int_{\Gamma} f(x,y)\, O_v(\phi_i)\, O_u(\phi_j)\, ds
 \]</div>
 <p>où</p>
 <ul>
-<li><span class="arithmatex">\(\kappa = \frac{2\pi}{\lambda}\)</span> est le nombre d'onde</li>
-<li><span class="arithmatex">\(f\)</span> est une source volumique.</li>
+<li><span class="arithmatex">\(f(x,y)\)</span> est une fonction donnée,</li>
+<li><span class="arithmatex">\(O_u\)</span> et <span class="arithmatex">\(O_v\)</span> sont des opérateurs appliqués aux fonctions de base,</li>
+<li><span class="arithmatex">\(\phi_i\)</span> sont les fonctions de base locales,</li>
+<li><span class="arithmatex">\(\Gamma\)</span> désigne tout ou partie du bord du domaine.</li>
+</ul>
+<p>La matrice est assemblée en parcourant les faces de bord du maillage triangulaire et en intégrant les contributions locales par quadrature sur les arêtes.</p>
+<hr />
+<h2 id="signature">Signature<a class="headerlink" href="#signature" title="Permanent link">&para;</a></h2>
+<p>assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", domaine="all")</p>
+<hr />
+<h2 id="parametres">Paramètres<a class="headerlink" href="#parametres" title="Permanent link">&para;</a></h2>
+<h3 id="mesh">mesh<a class="headerlink" href="#mesh" title="Permanent link">&para;</a></h3>
+<p>Maillage triangulaire (<code>meshio.Mesh</code>).</p>
+<p>Le maillage doit contenir :</p>
+<p>mesh.points<br />
+mesh.cells_dict["triangle"]</p>
+<hr />
+<h3 id="ordre">ordre<a class="headerlink" href="#ordre" title="Permanent link">&para;</a></h3>
+<p>Ordre polynomial des éléments finis.</p>
+<p>Le nombre de degrés de liberté locaux est</p>
+<div class="arithmatex">\[
+N_{loc}=\frac{(ordre+1)(ordre+2)}{2}.
+\]</div>
+<hr />
+<h3 id="func">func<a class="headerlink" href="#func" title="Permanent link">&para;</a></h3>
+<p>Fonction <span class="arithmatex">\(f(x,y)\)</span> utilisée dans l'intégrale de bord.</p>
+<p>Elle doit avoir la forme</p>
+<p>def func(x, y):
+return ...</p>
+<p>et accepter des vecteurs numpy.</p>
+<p>Exemple :</p>
+<p>func = lambda x, y: 1.0</p>
+<hr />
+<h3 id="operatoru">operatoru<a class="headerlink" href="#operatoru" title="Permanent link">&para;</a></h3>
+<p>Opérateur appliqué à la fonction de base associée à la variable <span class="arithmatex">\(u\)</span>.</p>
+<p>Valeurs possibles :</p>
+<ul>
+<li>"u" : fonction de base <span class="arithmatex">\(u\)</span></li>
+<li>"dxu" : dérivée <span class="arithmatex">\(\partial_x u\)</span></li>
+<li>"dyu" : dérivée <span class="arithmatex">\(\partial_y u\)</span></li>
+<li>"dnu" : dérivée normale <span class="arithmatex">\(\partial_n u\)</span></li>
 </ul>
 <hr />
-<h1 id="3-formulation-variationnelle">3. Formulation variationnelle<a class="headerlink" href="#3-formulation-variationnelle" title="Permanent link">&para;</a></h1>
-<p>On cherche</p>
-<div class="arithmatex">\[
-u \in H^1(\Omega)
-\]</div>
-<p>tel que</p>
-<div class="arithmatex">\[
-a(u,v) = \ell(v)
-\qquad \forall v \in H^1(\Omega)
-\]</div>
-<p>avec</p>
-<div class="arithmatex">\[
-a(u,v)
-=
-\int_\Omega \nabla u \cdot \nabla v
--
-\kappa^2 \int_\Omega uv
-+
-i\kappa \int_\Gamma uv
-\]</div>
-<p>et</p>
-<div class="arithmatex">\[
-\ell(v)
-=
-\int_\Omega f v.
-\]</div>
+<h3 id="operatorv">operatorv<a class="headerlink" href="#operatorv" title="Permanent link">&para;</a></h3>
+<p>Opérateur appliqué à la fonction test <span class="arithmatex">\(v\)</span>.</p>
+<p>Valeurs possibles :</p>
+<ul>
+<li>"v" : fonction test <span class="arithmatex">\(v\)</span></li>
+<li>"dxv" : dérivée <span class="arithmatex">\(\partial_x v\)</span></li>
+<li>"dyv" : dérivée <span class="arithmatex">\(\partial_y v\)</span></li>
+<li>"dnv" : dérivée normale <span class="arithmatex">\(\partial_n v\)</span></li>
+</ul>
 <hr />
-<h1 id="4-discretisation-elements-finis">4. Discrétisation éléments finis<a class="headerlink" href="#4-discretisation-elements-finis" title="Permanent link">&para;</a></h1>
-<p>On introduit l'espace EF</p>
-<div class="arithmatex">\[
-V_h \subset H^1(\Omega)
-\]</div>
-<p>constitué de polynômes de degré <span class="arithmatex">\(p\)</span> sur chaque triangle.</p>
-<p>Dans le code</p>
-<div class="highlight"><pre><span></span><code><span class="n">ordre</span> <span class="o">=</span> <span class="mi">3</span>
-</code></pre></div>
+<h3 id="methode">methode<a class="headerlink" href="#methode" title="Permanent link">&para;</a></h3>
+<p>Type de méthode d’éléments finis utilisée pour l’assemblage :</p>
+<ul>
+<li>"CG" : éléments finis continus (Continuous Galerkin)</li>
+<li>"DG" : éléments finis discontinus (Discontinuous Galerkin)</li>
+</ul>
+<p>La connectivité locale-globale des degrés de liberté est adaptée automatiquement en fonction de la méthode choisie.</p>
 <hr />
-<h1 id="5-matrices-elements-finis">5. Matrices éléments finis<a class="headerlink" href="#5-matrices-elements-finis" title="Permanent link">&para;</a></h1>
-<h2 id="matrice-de-masse">Matrice de masse<a class="headerlink" href="#matrice-de-masse" title="Permanent link">&para;</a></h2>
-<div class="arithmatex">\[
-M_{ij}
-=
-\int_\Omega \phi_i \phi_j
-\]</div>
-<div class="highlight"><pre><span></span><code><span class="n">MASSE_CG</span> <span class="o">=</span>
-<span class="n">assemble_volume</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ordre</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="n">methode</span><span class="o">=</span><span class="s2">&quot;CG&quot;</span><span class="p">)</span>
-</code></pre></div>
+<h3 id="domaine">domaine<a class="headerlink" href="#domaine" title="Permanent link">&para;</a></h3>
+<p>Partie du bord sur laquelle l’intégrale est assemblée.</p>
+<p>Valeurs typiques :</p>
+<ul>
+<li>"all" : tout le bord</li>
+<li>"FOURIER"</li>
+<li>"DIRICHLET"</li>
+<li>"NEUMANN"</li>
+</ul>
 <hr />
-<h2 id="matrices-de-rigidite">Matrices de rigidité<a class="headerlink" href="#matrices-de-rigidite" title="Permanent link">&para;</a></h2>
+<h2 id="retour">Retour<a class="headerlink" href="#retour" title="Permanent link">&para;</a></h2>
+<p>La fonction retourne une matrice creuse de type <code>COOMatrix</code> de taille</p>
 <div class="arithmatex">\[
-K_x(i,j)
-=
-\int_\Omega
-\partial_x \phi_i
-\partial_x \phi_j
+N_{glob}\times N_{glob}
 \]</div>
-<div class="arithmatex">\[
-K_y(i,j)
-=
-\int_\Omega
-\partial_y \phi_i
-\partial_y \phi_j
-\]</div>
-<div class="highlight"><pre><span></span><code><span class="n">RIGIDITE_CGx</span> <span class="o">=</span>
-<span class="n">assemble_volume</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ordre</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="s2">&quot;dxu&quot;</span><span class="p">,</span> <span class="s2">&quot;dxv&quot;</span><span class="p">,</span> <span class="n">methode</span><span class="o">=</span><span class="s2">&quot;CG&quot;</span><span class="p">)</span>
-
-<span class="n">RIGIDITE_CGy</span> <span class="o">=</span>
-<span class="n">assemble_volume</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ordre</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="s2">&quot;dyu&quot;</span><span class="p">,</span> <span class="s2">&quot;dyv&quot;</span><span class="p">,</span> <span class="n">methode</span><span class="o">=</span><span class="s2">&quot;CG&quot;</span><span class="p">)</span>
-</code></pre></div>
-<p>La matrice de Laplace est</p>
-<div class="arithmatex">\[
-K = K_x + K_y
-\]</div>
+<p>où <span class="arithmatex">\(N_{glob}\)</span> est le nombre total de degrés de liberté du problème.</p>
 <hr />
-<h2 id="matrice-de-bord-condition-de-fourier">Matrice de bord (condition de Fourier)<a class="headerlink" href="#matrice-de-bord-condition-de-fourier" title="Permanent link">&para;</a></h2>
-<div class="arithmatex">\[
-B_{ij}
-=
-\int_{\Gamma} \phi_i \phi_j
-\]</div>
-<div class="highlight"><pre><span></span><code><span class="n">MASSE_BORD_CG_FOURIER</span> <span class="o">=</span>
-<span class="n">assemble_surface</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ordre</span><span class="p">,</span> <span class="n">func</span><span class="p">,</span> <span class="s2">&quot;u&quot;</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="n">methode</span><span class="o">=</span><span class="s2">&quot;CG&quot;</span><span class="p">,</span> <span class="n">domaine</span><span class="o">=</span><span class="s2">&quot;FOURIER&quot;</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h1 id="6-matrice-globale">6. Matrice globale<a class="headerlink" href="#6-matrice-globale" title="Permanent link">&para;</a></h1>
-<p>La matrice discrète du problème est</p>
-<div class="arithmatex">\[
-A =
-K_x + K_y
--
-\kappa^2 M
-+
-i\kappa B
-\]</div>
-<p>dans le code :</p>
-<div class="highlight"><pre><span></span><code><span class="n">MAT_EF_CG</span> <span class="o">+=</span> <span class="n">RIGIDITE_CGx</span>
-<span class="n">MAT_EF_CG</span> <span class="o">+=</span> <span class="n">RIGIDITE_CGy</span>
-<span class="n">MAT_EF_CG</span> <span class="o">-=</span> <span class="n">kappa</span><span class="o">**</span><span class="mi">2</span> <span class="o">*</span> <span class="n">MASSE_CG</span>
-<span class="n">MAT_EF_CG</span> <span class="o">+=</span> <span class="n">alpha</span> <span class="o">*</span> <span class="n">MASSE_BORD_CG_FOURIER</span>
-</code></pre></div>
-<hr />
-<h1 id="7-second-membre">7. Second membre<a class="headerlink" href="#7-second-membre" title="Permanent link">&para;</a></h1>
-<p>La source est une gaussienne</p>
-<div class="arithmatex">\[
-f(x,y) =
-\exp\left(
--10(x-x_0)^2
--10(y-y_0)^2
-\right)
-\]</div>
-<div class="highlight"><pre><span></span><code><span class="n">f_source</span> <span class="o">=</span>
-<span class="k">lambda</span> <span class="n">x</span><span class="p">,</span><span class="n">y</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">10</span><span class="o">*</span><span class="p">(</span><span class="n">x</span><span class="o">-</span><span class="n">x_0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span> <span class="o">-</span><span class="mi">10</span><span class="o">*</span><span class="p">(</span><span class="n">y</span><span class="o">-</span><span class="n">y_0</span><span class="p">)</span><span class="o">**</span><span class="mi">2</span><span class="p">)</span>
-</code></pre></div>
-<p>Le second membre discret est</p>
-<div class="arithmatex">\[
-F_i =
-\int_\Omega f \phi_i
-\]</div>
-<div class="highlight"><pre><span></span><code><span class="n">F_volume</span> <span class="o">=</span>
-<span class="n">assemble_rhs_volume</span><span class="p">(</span><span class="n">mesh</span><span class="p">,</span> <span class="n">ordre</span><span class="p">,</span> <span class="n">f_source</span><span class="p">,</span> <span class="s2">&quot;v&quot;</span><span class="p">,</span> <span class="n">methode</span><span class="o">=</span><span class="s2">&quot;CG&quot;</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h1 id="8-systeme-lineaire">8. Système linéaire<a class="headerlink" href="#8-systeme-lineaire" title="Permanent link">&para;</a></h1>
-<p>On résout</p>
-<div class="arithmatex">\[
-A U = F
-\]</div>
-<div class="highlight"><pre><span></span><code><span class="n">U_sol</span> <span class="o">=</span> <span class="n">MAT_EF_CG</span><span class="o">.</span><span class="n">solve</span><span class="p">(</span><span class="n">F_volume</span><span class="p">)</span>
-</code></pre></div>
-<hr />
-<h1 id="9-visualisation">9. Visualisation<a class="headerlink" href="#9-visualisation" title="Permanent link">&para;</a></h1>
-<div class="highlight"><pre><span></span><code><span class="n">plot_nodal_vector_CG</span><span class="p">(</span><span class="n">U_sol</span><span class="p">,</span> <span class="n">mesh</span><span class="p">,</span> <span class="n">ordre</span><span class="p">)</span>
-</code></pre></div>
-<p>La solution est visualisée sur le maillage avec une interpolation
-linéaire sur les sous-triangles.</p>
-<hr />
-<h1 id="10-resume">10. Résumé<a class="headerlink" href="#10-resume" title="Permanent link">&para;</a></h1>
-<p>Le script réalise les étapes classiques d'une simulation EF :</p>
+<h2 id="principe-de-lalgorithme">Principe de l’algorithme<a class="headerlink" href="#principe-de-lalgorithme" title="Permanent link">&para;</a></h2>
+<p>Pour chaque triangle <span class="arithmatex">\(T\)</span> du maillage, et pour chaque face <span class="arithmatex">\(F\)</span> appartenant au domaine de bord choisi :</p>
 <ol>
-<li>génération du maillage  </li>
-<li>assemblage des matrices locales  </li>
-<li>construction de la matrice globale  </li>
-<li>assemblage du second membre  </li>
-<li>résolution du système linéaire  </li>
-<li>visualisation de la solution</li>
+<li>calcul de la géométrie de la face</li>
+<li>calcul de la longueur de l’arête</li>
+<li>évaluation des fonctions de base sur la face</li>
+<li>transformation éventuelle des gradients vers les coordonnées physiques</li>
+<li>construction de la matrice locale</li>
 </ol>
+<div class="arithmatex">\[
+M_{loc}
+=
+|e|
+\sum_q
+w_q\,f(x_q,y_q)\,
+O_v(\phi_i(x_q,y_q))\,
+O_u(\phi_j(x_q,y_q))
+\]</div>
+<ol>
+<li>insertion de cette contribution dans la matrice globale.</li>
+</ol>
+<p>L’assemblage global utilise la table</p>
+<p>LoctoGlob</p>
+<p>qui dépend du choix de la méthode :</p>
+<ul>
+<li>CG : degrés de liberté partagés entre éléments</li>
+<li>DG : degrés de liberté locaux à chaque élément</li>
+</ul>
+<hr />
+<h2 id="exemple">Exemple<a class="headerlink" href="#exemple" title="Permanent link">&para;</a></h2>
+<p>Assemblage d’une matrice de masse de bord :</p>
+<p>func = lambda x, y: 1.0</p>
+<p>Mbord = assemble_surface(
+mesh,
+ordre=2,
+func=func,
+operatoru="u",
+operatorv="v",
+methode="CG",
+domaine="all"
+)</p>
+<hr />
+<h2 id="remarques">Remarques<a class="headerlink" href="#remarques" title="Permanent link">&para;</a></h2>
+<ul>
+<li>La quadrature sur les faces est calculée une seule fois sur la face de référence.</li>
+<li>Les dérivées normales sont obtenues à partir de la normale extérieure à la face.</li>
+<li>L’assemblage global est réalisé via la structure creuse <code>COOMatrix</code>.</li>
+</ul>
 
 
 
