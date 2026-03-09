@@ -24,17 +24,23 @@ extra_javascript:
 nav:
   - Accueil: index.md
   - Installation: installation.md
-  - Théorie des éléments finis: fem.md
-
+  - Théorie des éléments finis:
+      - Eléments finis continus (CG): fem.md
+      - Méthode SIPDG: sipdg.md
+      - Formalisme hyperbolique DG: hyperbo.md
   - Exemples:
-      - Exemple CG 2: exemple_CG2.md
-      - Exemple SIPDG: exemple_SIPDG.md
-      - Exemple hyperbolique: exemple_hyperbo.md
-      - Exemple hyperbolique 2: exemple_hyperbo_2.md
+      - Element finis continus CG:
+          - Matrices variables CG: exemple_general_CG.md
+          - Un problème de Helmholtz CG: exemple_helmholtz_CG.md
+      - Formulation SIPDG:
+          - Un problème de Helmholtz en SIPDG: exemple_helmholtz_sipdg.md
+      - Formalisme hyperbolique DG:
+          - Exemple hyperbolique: exemple_hyperbo.md
+          - Exemple hyperbolique 2: exemple_hyperbo_2.md
 
   - API:
       - Assemblage des matrices volumiques: assemble_volume.md
       - Assemblage des matrices de bord: assemble_surface.md
       - Assemblage du matrices sur le squelette:
-        - par élément : assemble_skeleton_element.md
-        - par face : assemble_skeleton_face.md
+          - par élément: assemble_skeleton_element.md
+          - par face: assemble_skeleton_face.md
