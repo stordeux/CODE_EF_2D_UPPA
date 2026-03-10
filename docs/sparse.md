@@ -100,18 +100,18 @@ Crée une nouvelle matrice correspondant à la différence.
 Tous les coefficients sont multipliés.
 
 
-# PRODUIT MATRICE-VECTEUR
+## PRODUIT MATRICE-VECTEUR
 
     u = np.array([[1],[2],[3],[4]])
     Au = A @ u
 
-# PRODUIT VECTEUR-MATRICE
+## PRODUIT VECTEUR-MATRICE
 
     vT = u.T
     vTA = A.produit_gauche(vT)
 
 
-# FORME SESQUILINÉAIRE
+## FORME SESQUILINÉAIRE
 
     z = A.sesquilinear_form(v,u)
 
@@ -122,7 +122,7 @@ v* A u
 où v* est le conjugué hermitien.
 
 
-# RÉSOLUTION DE SYSTÈMES LINÉAIRES
+## RÉSOLUTION DE SYSTÈMES LINÉAIRES
 
 Pour résoudre
 
@@ -133,14 +133,14 @@ on peut écrire
     x = A.solve(b)
 
 
-# FACTORISATION LU
+## FACTORISATION LU
 
     A.lu()
     x = A.solveLU(b)
 
 Cela permet de résoudre plusieurs systèmes avec la même matrice.
 
-# VISUALISATION DE LA STRUCTURE CREUSE
+## VISUALISATION DE LA STRUCTURE CREUSE
 
     A.spy()
 
@@ -151,8 +151,54 @@ Cette visualisation est utile pour :
 - inspecter la structure des couplages
 - analyser la sparsité d'une matrice
 
+## Méthodes de la classe COOMatrix
 
-# EXEMPLE COMPLET
+| Méthode                         | Description                                                                 | Exemple                        |
+| ------------------------------- | --------------------------------------------------------------------------- | ------------------------------ |
+| `__init__(nb_lig, nb_col, nnz)` | Crée une matrice creuse avec une capacité maximale `nnz`.                   | `A = COOMatrix(4,4,30)`        |
+| `ajout(i, j, val)`              | Ajoute un coefficient `(i,j)` de valeur `val`. Les doublons sont autorisés. | `A.ajout(1,0,1.0)`             |
+| `to_dense()`                    | Convertit la matrice creuse en matrice NumPy dense.                         | `A_dense = A.to_dense()`       |
+| `copy()`                        | Crée une copie indépendante de la matrice.                                  | `B = A.copy()`                 |
+| `__add__(B)`                    | Addition de matrices : `A = B + C`.                                         | `A = B + C`                    |
+| `__iadd__(B)`                   | Addition en place : `B += C`.                                               | `B += C`                       |
+| `__sub__(B)`                    | Soustraction de matrices.                                                   | `A = B - C`                    |
+| `__mul__(alpha)`                | Multiplication par un scalaire.                                             | `B = 10*A`                     |
+| `__rmul__(alpha)`               | Multiplication scalaire à gauche.                                           | `B = 10*A`                     |
+| `__matmul__(u)`                 | Produit matrice-vecteur `A @ u`.                                            | `Au = A @ u`                   |
+| `produit_gauche(vT)`            | Produit vecteur-matrice `v^T A`.                                            | `vTA = A.produit_gauche(vT)`   |
+| `sesquilinear_form(v, u)`       | Calcule la forme sesquilinéaire `v* A u`.                                   | `z = A.sesquilinear_form(v,u)` |
+| `lu()`                          | Calcule la factorisation LU de la matrice.                                  | `A.lu()`                       |
+| `solve(b)`                      | Résout `Ax = b`.                                                            | `x = A.solve(b)`               |
+| `solveLU(b)`                    | Résout `Ax = b` à partir d'une LU déjà calculée.                            | `x = A.solveLU(b)`             |
+| `spy()`                         | Affiche la structure creuse de la matrice.                                  | `A.spy()`                      |
+| `is_zero()`                     | Vérifie si la matrice est nulle.                                            | `A.is_zero()`                  |
+
+## Attributs principaux
+
+| Attribut | Description                                 |
+| -------- | ------------------------------------------- |
+| `nb_lig` | nombre de lignes                            |
+| `nb_col` | nombre de colonnes                          |
+| `nnz`    | capacité maximale de coefficients           |
+| `l`      | nombre de coefficients actuellement stockés |
+| `rows`   | indices de lignes des coefficients          |
+| `cols`   | indices de colonnes des coefficients        |
+| `data`   | valeurs des coefficients                    |
+
+## Opérations supportées par COOMatrix
+
+| Opération               | Syntaxe         |
+| ----------------------- | --------------- |
+| Addition                | `A = B + C`     |
+| Addition en place       | `B += C`        |
+| Soustraction            | `A = B - C`     |
+| Produit scalaire        | `B = alpha * A` |
+| Produit matrice-vecteur | `A @ u`         |
+| Produit vecteur-matrice | `v.T @ A`       |
+| Forme sesquilinéaire    | `v* A u`        |
+
+
+## EXEMPLE COMPLET
 
 Un exemple d’utilisation se trouve dans :
 
