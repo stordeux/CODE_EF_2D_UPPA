@@ -22,7 +22,8 @@ dependencies = [
   "shapely",
   "mkdocs",
   "mkdocs-material",
-  "pymdown-extensions"
+  "pymdown-extensions",
+  "opencv-python"
 ]
 [project.optional-dependencies]
 test = ["pytest>=7"]

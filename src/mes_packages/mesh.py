@@ -121,6 +121,124 @@ def create_mesh_circle_in_square_old(radius=0.2, square_size=1.0, mesh_size=0.2)
         
     return mesh
 
+def create_mesh_polygon_with_hole(outer_points, inner_points, mesh_size=0.05):
+    """
+    Génère un maillage 2D d’un polygone contenant un trou polygonal.
+
+    Géométrie
+    ---------
+    Ω = polygone extérieur
+    trou = polygone intérieur
+
+    Frontières physiques
+    --------------------
+    - "FOURIER" : frontière extérieure
+    - "NEUMANN" : frontière du trou
+    - "OMEGA"   : domaine
+
+    Paramètres
+    ----------
+    outer_points : list[(x,y)]
+        Sommets du polygone extérieur (ordre le long du bord).
+    inner_points : list[(x,y)]
+        Sommets du polygone intérieur.
+    mesh_size : float
+        Taille caractéristique du maillage.
+
+    Retour
+    ------
+    mesh : meshio.Mesh
+    """
+
+    import gmsh
+    import meshio
+    import tempfile
+    import os
+
+    gmsh.initialize()
+    gmsh.model.add("polygon_with_hole")
+
+    geo = gmsh.model.geo
+
+    # --------------------------------------------------
+    # 1. Polygone extérieur
+    # --------------------------------------------------
+
+    outer_gmsh_pts = [
+        geo.addPoint(x, y, 0, mesh_size)
+        for x, y in outer_points
+    ]
+
+    outer_lines = []
+    n = len(outer_gmsh_pts)
+
+    for i in range(n):
+        p1 = outer_gmsh_pts[i]
+        p2 = outer_gmsh_pts[(i + 1) % n]
+        outer_lines.append(geo.addLine(p1, p2))
+
+    outer_loop = geo.addCurveLoop(outer_lines)
+
+    # --------------------------------------------------
+    # 2. Polygone intérieur (trou)
+    # --------------------------------------------------
+
+    inner_gmsh_pts = [
+        geo.addPoint(x, y, 0, mesh_size)
+        for x, y in inner_points
+    ]
+
+    inner_lines = []
+    m = len(inner_gmsh_pts)
+
+    for i in range(m):
+        p1 = inner_gmsh_pts[i]
+        p2 = inner_gmsh_pts[(i + 1) % m]
+        inner_lines.append(geo.addLine(p1, p2))
+
+    inner_loop = geo.addCurveLoop(inner_lines)
+
+    # --------------------------------------------------
+    # 3. Surface perforée
+    # --------------------------------------------------
+
+    surface = geo.addPlaneSurface([outer_loop, inner_loop])
+
+    geo.synchronize()
+
+    # --------------------------------------------------
+    # 4. Groupes physiques
+    # --------------------------------------------------
+
+    tag_fourier = gmsh.model.addPhysicalGroup(1, outer_lines)
+    gmsh.model.setPhysicalName(1, tag_fourier, "FOURIER")
+
+    tag_neumann = gmsh.model.addPhysicalGroup(1, inner_lines)
+    gmsh.model.setPhysicalName(1, tag_neumann, "NEUMANN")
+
+    tag_domain = gmsh.model.addPhysicalGroup(2, [surface])
+    gmsh.model.setPhysicalName(2, tag_domain, "OMEGA")
+
+    # --------------------------------------------------
+    # 5. Génération du maillage
+    # --------------------------------------------------
+
+    gmsh.model.mesh.generate(2)
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".msh", delete=False)
+    tmp.close()
+
+    gmsh.write(tmp.name)
+    gmsh.finalize()
+
+    mesh = meshio.read(tmp.name)
+    os.remove(tmp.name)
+
+    verifier_et_corriger_orientation(mesh)
+
+    return mesh
+
+
 def triangle_area(p1, p2, p3):
     """
     Aire d'un triangle 2D défini par p1, p2, p3
@@ -662,17 +780,50 @@ def candidate_triangles(x, y, spgrid):
 
 
 def create_mesh_circle_in_square(radius=0.2, square_size=1.0, mesh_size=0.05):
+    """
+    Génère un maillage 2D d’un carré contenant un trou circulaire centré.
+
+    Géométrie :
+        Ω = carré de côté `square_size`
+        trou = disque de rayon `radius` centré en (0,0)
+
+    Frontières physiques définies :
+        - "FOURIER" : bord extérieur du carré
+        - "NEUMANN" : bord du trou circulaire
+        - "OMEGA"   : domaine 2D
+
+    Paramètres
+    ----------
+    radius : float
+        Rayon du trou circulaire.
+    square_size : float
+        Longueur du côté du carré.
+    mesh_size : float
+        Taille caractéristique du maillage (gmsh).
+
+    Retour
+    ------
+    mesh : meshio.Mesh
+        Maillage triangulaire avec groupes physiques conservés.
+    """
+
     import gmsh
     import meshio
     import tempfile
     import os
 
+    # ============================================================
+    # Initialisation de gmsh
+    # ============================================================
     gmsh.initialize()
     gmsh.model.add("square_with_hole")
 
     # ============================================================
-    # 1. Géométrie du carré
+    # 1. Définition de la géométrie du carré
     # ============================================================
+    # On construit explicitement les 4 sommets et les 4 arêtes.
+    # Ces arêtes formeront la frontière extérieure du domaine.
+
     geo = gmsh.model.geo
 
     p1 = geo.addPoint(-square_size/2, -square_size/2, 0, mesh_size)
@@ -685,11 +836,17 @@ def create_mesh_circle_in_square(radius=0.2, square_size=1.0, mesh_size=0.05):
     l3 = geo.addLine(p3, p4)
     l4 = geo.addLine(p4, p1)
 
+    # Boucle fermée représentant le bord extérieur
     outer_loop = geo.addCurveLoop([l1, l2, l3, l4])
 
     # ============================================================
-    # 2. Cercle (IMPORTANT : 4 arcs en GEO, pas addCircle)
+    # 2. Construction du cercle intérieur
     # ============================================================
+    # IMPORTANT :
+    # On utilise 4 arcs de cercle GEO au lieu de addCircle
+    # pour garantir une bonne compatibilité avec meshio
+    # et conserver correctement les tags de frontières.
+
     pc = geo.addPoint(0, 0, 0, mesh_size)
 
     p5 = geo.addPoint( radius, 0, 0, mesh_size)
@@ -702,45 +859,163 @@ def create_mesh_circle_in_square(radius=0.2, square_size=1.0, mesh_size=0.05):
     c3 = geo.addCircleArc(p7, pc, p8)
     c4 = geo.addCircleArc(p8, pc, p5)
 
+    # Boucle représentant le bord du trou
     inner_loop = geo.addCurveLoop([c1, c2, c3, c4])
 
-    # Surface perforée
+    # ============================================================
+    # 3. Définition de la surface perforée
+    # ============================================================
+    # gmsh construit la surface comme :
+    # surface = outer_loop - inner_loop
+    # c'est-à-dire un carré auquel on retire le disque.
+
     surface = geo.addPlaneSurface([outer_loop, inner_loop])
 
     geo.synchronize()
 
     # ============================================================
-    # 3. Physical Groups (CEUX QUI T'INTÉRESSENT)
+    # 4. Groupes physiques
     # ============================================================
+    # Les groupes physiques servent à identifier les frontières
+    # lors de l’assemblage FEM (conditions aux limites).
 
+    # Bord extérieur : condition de Fourier
     tag_fourier = gmsh.model.addPhysicalGroup(1, [l1, l2, l3, l4])
     gmsh.model.setPhysicalName(1, tag_fourier, "FOURIER")
 
+    # Bord intérieur : condition de Neumann
     tag_neumann = gmsh.model.addPhysicalGroup(1, [c1, c2, c3, c4])
     gmsh.model.setPhysicalName(1, tag_neumann, "NEUMANN")
 
+    # Domaine 2D
     tag_domain = gmsh.model.addPhysicalGroup(2, [surface])
     gmsh.model.setPhysicalName(2, tag_domain, "OMEGA")
 
     # ============================================================
-    # 4. Maillage
+    # 5. Génération du maillage triangulaire
     # ============================================================
     gmsh.model.mesh.generate(2)
 
     # ============================================================
-    # 5. Écriture réelle du .msh (sinon meshio perd les tags !)
+    # 6. Écriture temporaire du fichier .msh
     # ============================================================
+    # Étape importante :
+    # meshio lit correctement les groupes physiques seulement
+    # si le maillage est écrit puis relu depuis un fichier.
+
     tmp = tempfile.NamedTemporaryFile(suffix=".msh", delete=False)
     tmp.close()
 
     gmsh.write(tmp.name)
     gmsh.finalize()
 
-    # Lecture meshio avec toutes les metadata gmsh
+    # Lecture via meshio avec conservation des tags gmsh
     mesh = meshio.read(tmp.name)
     os.remove(tmp.name)
 
-    # Optionnel : corriger orientation
+    # ============================================================
+    # 7. Correction éventuelle de l’orientation des triangles
+    # ============================================================
+    # Garantit une orientation cohérente pour les intégrales FEM
+    verifier_et_corriger_orientation(mesh)
+
+    return mesh
+
+def create_mesh_from_polygon(points, mesh_size=0.05):
+    """
+    Génère un maillage 2D triangulaire à partir d'un polygone.
+
+    Géométrie
+    ---------
+    Ω = domaine polygonal défini par la liste de sommets `points`.
+
+    Frontières physiques
+    --------------------
+    - "FOURIER" : frontière extérieure du domaine
+    - "OMEGA"   : domaine 2D
+
+    Paramètres
+    ----------
+    points : list of tuple
+        Liste des sommets du polygone [(x1,y1), (x2,y2), ...]
+        Les points doivent être ordonnés le long du bord.
+    mesh_size : float
+        Taille caractéristique du maillage.
+
+    Retour
+    ------
+    mesh : meshio.Mesh
+        Maillage triangulaire avec groupes physiques.
+    """
+
+    import gmsh
+    import meshio
+    import tempfile
+    import os
+
+    gmsh.initialize()
+    gmsh.model.add("polygon")
+
+    geo = gmsh.model.geo
+
+    # ============================================================
+    # 1. Création des points
+    # ============================================================
+
+    gmsh_points = []
+    for x, y in points:
+        gmsh_points.append(geo.addPoint(x, y, 0, mesh_size))
+
+    # ============================================================
+    # 2. Création des arêtes
+    # ============================================================
+
+    lines = []
+    n = len(gmsh_points)
+
+    for i in range(n):
+        p1 = gmsh_points[i]
+        p2 = gmsh_points[(i + 1) % n]   # fermeture automatique
+        lines.append(geo.addLine(p1, p2))
+
+    # Boucle fermée
+    loop = geo.addCurveLoop(lines)
+
+    # Surface du domaine
+    surface = geo.addPlaneSurface([loop])
+
+    geo.synchronize()
+
+    # ============================================================
+    # 3. Groupes physiques
+    # ============================================================
+
+    tag_fourier = gmsh.model.addPhysicalGroup(1, lines)
+    gmsh.model.setPhysicalName(1, tag_fourier, "FOURIER")
+
+    tag_domain = gmsh.model.addPhysicalGroup(2, [surface])
+    gmsh.model.setPhysicalName(2, tag_domain, "OMEGA")
+
+    # ============================================================
+    # 4. Génération du maillage
+    # ============================================================
+
+    gmsh.model.mesh.generate(2)
+
+    # ============================================================
+    # 5. Sauvegarde temporaire (pour conserver les tags gmsh)
+    # ============================================================
+
+    tmp = tempfile.NamedTemporaryFile(suffix=".msh", delete=False)
+    tmp.close()
+
+    gmsh.write(tmp.name)
+    gmsh.finalize()
+
+    mesh = meshio.read(tmp.name)
+    os.remove(tmp.name)
+
+    # Correction orientation triangles
     verifier_et_corriger_orientation(mesh)
 
     return mesh
@@ -1132,7 +1407,7 @@ def build_neighborhood_structure_with_bc(mesh):
     return neighbors, neighbor_faces, edges_to_triangles, reference_BC, bc_name
 
 
-def plot_mesh_with_bc(mesh):
+def plot_mesh_with_bc(mesh,secondes=2):
     """
     Trace le maillage en coloriant automatiquement les différentes
     conditions aux limites définies dans Gmsh.
@@ -1212,7 +1487,12 @@ def plot_mesh_with_bc(mesh):
     ax.set_aspect("equal")
     ax.set_title("Maillage avec conditions aux limites (auto)")
     ax.legend()
-    plt.show()
+    if secondes > 0:
+        plt.show(block=False)
+        plt.pause(secondes)
+        plt.close()
+    else :
+        plt.show()
 
 
 def compute_element_sizes(mesh):

@@ -29,7 +29,9 @@ from .mesh import (
     plot_mesh_with_bc,
     build_boundary_conditions,
     compute_h_min,
-    compute_element_sizes
+    compute_element_sizes,
+    create_mesh_from_polygon,
+    create_mesh_polygon_with_hole,
     )    
 from .methode_DG import (
     build_loctoglob_DG,
@@ -127,6 +129,8 @@ __all__ = [
     "base_1D",
     "build_masse_ref_1D",
     "create_mesh_circle_in_square",
+    "create_mesh_from_polygon",
+    "create_mesh_polygon_with_hole",
     "verifier_et_corriger_orientation",
     "check_triangle_areas",
     "triangle_area",

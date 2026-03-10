@@ -8,8 +8,8 @@ Bienvenue dans la bibliothèque **mes_packages** de l’UPPA. Ce projet fournit 
 2. Théorie des éléments finis
     - a. [Eléments finis continus](fem.md) Rappel des fondements mathématiques des éléments finis continus.
     - b. [SIPDG](sipdg.md) Rappel des fondements mathématiques des éléments finis continus.
-
-3. API – Description détaillée de l'assemblage des matrices :
+3. [Description des structures de maillage](mesh.md)
+4. API – Description détaillée de l'assemblage des matrices :
 
      - a. [assemble_volume](assemble_volume.md) – Assemblage des matrices de volume.
 
@@ -19,7 +19,7 @@ Bienvenue dans la bibliothèque **mes_packages** de l’UPPA. Ce projet fournit 
      [assemble_skeleton_par_element](assemble_skeleton_element.md)  
      [assemble_skeleton_face](assemble_skeleton_face.md) 
 
-4. Notebooks et scripts illustrant la résolution de problèmes CG.
+5. Notebooks et scripts illustrant la résolution de problèmes CG.
 
     - a  [Un problème de Helmholtz](exemple_helmholtz_CG.md) Résolution d'un problème de Helmholtz avec source volumique
 
@@ -27,7 +27,7 @@ Bienvenue dans la bibliothèque **mes_packages** de l’UPPA. Ce projet fournit 
 
     - c
 
-5. Notebooks et scripts illustrant la résolution de problèmes SIPDG.
+6. Notebooks et scripts illustrant la résolution de problèmes SIPDG.
 
     - a - [Un problème de Helmholtz](exemple_helmholtz_sipdg.md) Résolution d'un problème de Helmholtz avec source volumique
 
