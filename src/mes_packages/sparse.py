@@ -117,6 +117,40 @@ class COOMatrix:
         A.l = self.l + other.l
 
         return A
+    
+    def __sub__(self, other):
+        """
+        Retourne une nouvelle matrice COOMatrix égale à self - other,
+        sans modifier self ni other.
+
+        Convention choisie :
+        - mêmes dimensions obligatoires ;
+        - capacité allouée : self.nnz + other.nnz ;
+        - nombre d'entrées effectivement stockées : self.l + other.l.
+        """
+        if not isinstance(other, COOMatrix):
+            return NotImplemented
+
+        if self.nb_lig != other.nb_lig or self.nb_col != other.nb_col:
+            raise ValueError("Les matrices doivent avoir les mêmes dimensions")
+
+        A = COOMatrix(self.nb_lig, self.nb_col, self.nnz + other.nnz)
+
+        # Copie des coefficients de self
+        A.rows[:self.l] = self.rows[:self.l]
+        A.cols[:self.l] = self.cols[:self.l]
+        A.data[:self.l] = self.data[:self.l]
+
+        # Copie des coefficients de other
+        A.rows[self.l:self.l + other.l] = other.rows[:other.l]
+        A.cols[self.l:self.l + other.l] = other.cols[:other.l]
+        A.data[self.l:self.l + other.l] = -other.data[:other.l]
+
+        # Nombre effectif de coefficients insérés
+        A.l = self.l + other.l
+
+        return A
+
 
     def __isub__(self, other):
         """

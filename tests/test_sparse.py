@@ -1,38 +1,49 @@
 from mes_packages import COOMatrix
 import numpy as np
 
+def test_add_and_iadd_consistency():
+    Mat = COOMatrix(4, 4, 30)
+    Mat.ajout(1, 0, 1)
+    Mat.ajout(0, 1, 1.0)
+    Mat.ajout(2, 2, 1.0)
+    Mat.ajout(3, 2, 1.5)
+    Mat.ajout(3, 3, 1.0)
+    Mat.ajout(2, 3, 1.0)
+    Mat.ajout(1, 3, 1.0)
+    Mat.ajout(3, 1, 5.0)
+    Mat.ajout(0, 3, 2.0)
+    Mat.ajout(0, 3, np.pi)
 
-def test_addition_inplace():
-    Mat=COOMatrix(4,4,30)
-    Mat.ajout(1,0,1)
-    Mat.ajout(0,1,1.0)
-    Mat.ajout(2,2,1.0)
-    Mat.ajout(3,2,1.5) 
-    Mat.ajout(3,3,1.0)
-    Mat.ajout(2,3,1.0)
-    Mat.ajout(1,3,1.0)
-    Mat.ajout(3,1,5.0)
-    Mat.ajout(0,3,2.0)
-    Mat.ajout(0,3,np.pi)
-    Mat1dense = Mat.to_dense() 
+    Mat2 = COOMatrix(4, 4, 30)
+    Mat2.ajout(1, 0, 1)
+    Mat2.ajout(0, 1, 1.0)
+    Mat2.ajout(2, 2, 1.0)
+    Mat2.ajout(3, 2, 1.5)
+    Mat2.ajout(3, 3, 1.0)
+    Mat2.ajout(2, 3, 1.0)
+    Mat2.ajout(1, 3, 1.0)
+    Mat2.ajout(3, 1, 5.0)
+    Mat2.ajout(0, 3, 2.0)
+    Mat2.ajout(0, 3, np.pi)
 
-    Mat2=COOMatrix(4,4,30)
-    Mat2.ajout(1,0,1)
-    Mat2.ajout(0,1,1.0)
-    Mat2.ajout(2,2,1.0)
-    Mat2.ajout(3,2,1.5) 
-    Mat2.ajout(3,3,1.0)
-    Mat2.ajout(2,3,1.0)
-    Mat2.ajout(1,3,1.0)
-    Mat2.ajout(3,1,5.0)
-    Mat2.ajout(0,3,2.0)
-    Mat2.ajout(0,3,np.pi)
+    Mat1dense = Mat.to_dense()
     Mat2dense = Mat2.to_dense()
-    Mat+=Mat2
-    Mat=Mat3dense = Mat.to_dense()
-    TEST= np.allclose(Mat3dense, Mat1dense + Mat2dense)
 
-    assert TEST, "Addition inplace failed"
+    # Test du +
+    A = Mat + Mat2
+    Adense = A.to_dense()
+
+    # Test du +=
+    Mat += Mat2
+    Mat3dense = Mat.to_dense()
+
+    expected = Mat1dense + Mat2dense
+
+    assert np.allclose(Adense, expected), "A = Mat + Mat2 incorrect"
+    assert np.allclose(Mat3dense, expected), "Mat += Mat2 incorrect"
+    assert np.allclose(Adense, Mat3dense), "+ et += ne donnent pas le même résultat"
+    assert np.allclose(Mat2.to_dense(), Mat2dense), "Mat2 a été modifiée"
+
 
 def test_subtraction_inplace():
     # Vérification de la soustraction
