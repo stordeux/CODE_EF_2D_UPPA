@@ -29,6 +29,7 @@ nav:
       - Méthode SIPDG: sipdg.md
       - Formalisme hyperbolique DG: hyperbo.md
   - Description du maillage: mesh.md
+  - Matrices sparses: sparse.md
   - Exemples:
       - Element finis continus CG:
           - Matrices variables CG: exemple_general_CG.md

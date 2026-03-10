@@ -9,7 +9,8 @@ Bienvenue dans la bibliothèque **mes_packages** de l’UPPA. Ce projet fournit 
     - a. [Eléments finis continus](fem.md) Rappel des fondements mathématiques des éléments finis continus.
     - b. [SIPDG](sipdg.md) Rappel des fondements mathématiques des éléments finis continus.
 3. [Description des structures de maillage](mesh.md)
-4. API – Description détaillée de l'assemblage des matrices :
+4. [Une classe de matrices creuses](mesh.md)
+5. API – Description détaillée de l'assemblage des matrices :
 
      - a. [assemble_volume](assemble_volume.md) – Assemblage des matrices de volume.
 
@@ -19,7 +20,7 @@ Bienvenue dans la bibliothèque **mes_packages** de l’UPPA. Ce projet fournit 
      [assemble_skeleton_par_element](assemble_skeleton_element.md)  
      [assemble_skeleton_face](assemble_skeleton_face.md) 
 
-5. Notebooks et scripts illustrant la résolution de problèmes CG.
+6. Notebooks et scripts illustrant la résolution de problèmes CG.
 
     - a  [Un problème de Helmholtz](exemple_helmholtz_CG.md) Résolution d'un problème de Helmholtz avec source volumique
 
@@ -27,7 +28,7 @@ Bienvenue dans la bibliothèque **mes_packages** de l’UPPA. Ce projet fournit 
 
     - c
 
-6. Notebooks et scripts illustrant la résolution de problèmes SIPDG.
+7. Notebooks et scripts illustrant la résolution de problèmes SIPDG.
 
     - a - [Un problème de Helmholtz](exemple_helmholtz_sipdg.md) Résolution d'un problème de Helmholtz avec source volumique
 
