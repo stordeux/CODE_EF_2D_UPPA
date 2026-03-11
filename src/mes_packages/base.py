@@ -1,3 +1,64 @@
+"""
+Conventions mathématiques utilisées dans ce module
+--------------------------------------------------
+
+On travaille sur le triangle de référence
+
+    T_hat = { (x,y) ; x >= 0, y >= 0, x+y <= 1 }
+
+de sommets :
+    A0 = (0,0), A1 = (1,0), A2 = (0,1).
+
+On rappelle que l’intérieur du triangle peut aussi être décrit à l’aide des
+coordonnées barycentriques par
+
+    x > 0, y > 0, z > 0, avec z = 1 - x - y.
+
+Pour un ordre polynomial `ordre >= 1`, les nœuds d’interpolation sont les
+points équidistants du triangle :
+
+    (x_{m,n}, y_{m,n}) = (m/ordre, n/ordre),
+
+où les entiers `m` et `n` vérifient
+
+    m >= 0, n >= 0, m+n <= ordre,
+
+ou encore, en posant
+
+    p = ordre - m - n,
+
+    m >= 0, n >= 0, p >= 0, avec m+n+p = ordre.
+
+Le triplet `(m,n,p)` décrit alors les coordonnées barycentriques discrètes
+du nœud :
+
+    (m/ordre, n/ordre, p/ordre).
+
+La fonction `base(x,y,m,n,ordre)` désigne la fonction de base de Lagrange
+associée au nœud `(m,n)`. Elle vérifie la propriété d’interpolation :
+
+    phi_{m,n}(x_{m',n'}, y_{m',n'}) = delta_{m,m'} delta_{n,n'}.
+
+La numérotation locale 1D est définie par
+
+    loc2D_to_loc1D(m,n) = i
+    avec i = (m+n)(m+n+1)/2 + n.
+
+Cette numérotation correspond à un rangement par diagonales de somme
+constante `m+n`, puis par ordre croissant de `n`.
+
+Pour l’ordre 3, on obtient la correspondance suivante entre `(m,n)` et `i` :
+
+    (0,3) [i=9]
+
+    (0,2) [i=5]   (1,2) [i=8]
+
+    (0,1) [i=2]   (1,1) [i=4]   (2,1) [i=7]
+
+    (0,0) [i=0]   (1,0) [i=1]   (2,0) [i=3]   (3,0) [i=6]
+"""
+
+
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Callable
@@ -6,8 +67,31 @@ from numpy.typing import NDArray
 
 # Définition des fonctions de base sur le triangle de référence
 def base(x,y, m:int,n:int,ordre:int):
-    # ordre k : Pk
-    # m,n numéro du point d'interpolation
+    """
+    Évalue la fonction de base de Lagrange associée au nœud `(m,n)`
+    sur le triangle de référence.
+
+    Le triangle de référence est
+        T_hat = { (x,y) ; x >= 0, y >= 0, x+y <= 1 }.
+
+    Pour un ordre polynomial `ordre`, le nœud `(m,n)` correspond au point
+        (m/ordre, n/ordre),
+    avec `m >= 0`, `n >= 0` et `m+n <= ordre`.
+
+    Parameters
+    ----------
+    x, y : float
+        Coordonnées du point d'évaluation.
+    m, n : int
+        Indices du nœud associé à la fonction de base.
+    ordre : int
+        Ordre polynomial.
+
+    Returns
+    -------
+    float
+        Valeur de la fonction de base au point `(x,y)`.
+    """
     P = 1
     z = np.linspace(0,1,ordre+1)
     for i in range(m):
@@ -17,7 +101,7 @@ def base(x,y, m:int,n:int,ordre:int):
     for k in range(ordre-n-m):
             P *= (1 - x - y - z[k]) / (1 - z[m] - z[n] - z[k])
     return P
-# Dérivée ds fonctions de base sur le triangle de référence
+# Dérivée des fonctions de base sur le triangle de référence
 def derivative_base(x, y, m=0, n=0, ordre=3, var='x'):
     """
     Calcule la dérivée partielle exacte de la fonction de base
@@ -237,7 +321,7 @@ def vecteur_nodal_reference(f: Callable[[float,float], float], ordre: int) -> ND
     Parameters:
     -----------
     f : Callable[[float, float], float]
-        Fonction a evaluer f(x, y) aux noeuds du triangle de référence
+        Fonction à évaluer f(x, y) aux noeuds du triangle de référence
     ordre : int
         Ordre polynomial (détermine le nombre de nœuds)
         
@@ -245,15 +329,14 @@ def vecteur_nodal_reference(f: Callable[[float,float], float], ordre: int) -> ND
     --------
     nodes : float
         Tableau contenant les valeurs évaluées aux nœuds
-        Dimension : (Nloc, 2) avec Nloc = (ordre+1)*(ordre+2)//2
+        Dimension : (Nloc, ) avec Nloc = (ordre+1)*(ordre+2)//2
     """
     N = (ordre + 1) * (ordre + 2) // 2  # Nombre total de nœuds
     out = np.zeros((N,),dtype=float)  # Initialisation du tableau des nœuds
     
-    index = 0
     for m in range(ordre + 1):
         for n in range(ordre + 1 - m):
-            # Coordonnées barycentriques
+            # Coordonnées du nœud dans le triangle de référence
             x = m / ordre
             y = n / ordre
             i = loc2D_to_loc1D(m, n)

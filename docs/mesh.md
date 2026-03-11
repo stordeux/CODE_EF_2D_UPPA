@@ -363,9 +363,9 @@ c’est-à-dire le diamètre du disque de même aire.
 
 Retourne
 
-[
+$$
 h_{\min} = \min_K h_K
-]
+$$
 
 utile pour les critères CFL ou les pénalisations de type SIPG.
 
