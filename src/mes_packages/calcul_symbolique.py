@@ -10,3 +10,11 @@ def build_f_and_grads(f_symf_, vars):
     dxf = sp.lambdify((x, y), dfdx_sym, 'numpy')
     dyf = sp.lambdify((x, y), dfdy_sym, 'numpy')
     return f,dxf,dyf
+
+def as_callable_scalar(z):
+    """
+    Convertit un scalaire ou un callable en callable scalaire z(x,y).
+    """
+    if callable(z):
+        return z
+    return lambda x, y, z0=z: z0 + 0.0 * x

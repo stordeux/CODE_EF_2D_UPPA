@@ -8,7 +8,9 @@ Bienvenue dans la bibliothèque **mes_packages** de l’UPPA. Ce projet fournit 
 2. Théorie des éléments finis
     - a. [Eléments finis continus](fem.md) Rappel des fondements mathématiques des éléments finis continus.
     - b. [SIPDG](sipdg.md) Rappel des fondements mathématiques des éléments finis continus.
-3. [Description des structures de maillage](mesh.md)
+3. Le maillage: 
+    - a. [Description des structures de maillage](mesh_1.md)
+    - a. [Comment créer un autre maillage](mesh_2.md)
 4. [Une classe de matrices creuses](mesh.md)
 5. API – Description détaillée de l'assemblage des matrices :
 

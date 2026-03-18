@@ -3,6 +3,41 @@ from mes_packages.assemblage_general import *
 
 ZERO = lambda x,y: 0.0
 
+def normalize_hyperbo_operator(op: str, kind: str) -> str:
+    """
+    Normalise les alias d'opérateurs pour rendre cohérents :
+    - squelette : uTnx, uVnx, ...
+    - frontière : nxu, nyu, ...
+    - anciens alias : n1/n2
+    """
+    op = op.strip().replace(" ", "")
+
+    # anciens alias n1/n2 -> nx/ny
+    aliases = {
+        "uTn1": "uTnx",
+        "uVn1": "uVnx",
+        "vTn1": "vTnx",
+        "vVn1": "vVnx",
+        "uTn2": "uTny",
+        "uVn2": "uVny",
+        "vTn2": "vTny",
+        "vVn2": "vVny",
+    }
+    op = aliases.get(op, op)
+
+    # sur la frontière, il n'y a que le côté T
+    if kind == "frontiere":
+        boundary_aliases = {
+            "uTnx": "nxu",
+            "uTny": "nyu",
+            "vTnx": "nxv",
+            "vTny": "nyv",
+        }
+        op = boundary_aliases.get(op, op)
+
+    return op
+
+
 def add_hyperbo(m,n,A,Mat,Nglob):
     """
     Assemble le block sparse A dans la matrice globale Mat
@@ -162,6 +197,9 @@ def assemble_hyperbo(
         La matrice de squelette assemblée pour le système hyperbolique spécifié.
     """
 
+    opu = normalize_hyperbo_operator(opu, kind)
+    opv = normalize_hyperbo_operator(opv, kind)
+
     # Calcul de
     # Nglob : nombre de degrés de liberté globaux par composante du système
     # NT : nombre de triangles du maillage
@@ -179,7 +217,7 @@ def assemble_hyperbo(
             for m in range(d):
                 for n in range(d):
                     coef_mn = F[m, n]
-                    A_mn = assemble_volume(mesh, ordre, coef_mn, opu, opv, methode)
+                    A_mn = assemble_volume(mesh, ordre, coef_mn, opu, opv, methode=methode)
                     add_hyperbo(m, n, A_mn, Mat, Nglob)
             return Mat
         elif Ftype == "F1type":
@@ -196,7 +234,7 @@ def assemble_hyperbo(
             for m in range(d):
                 for n in range(d):
                     coef_mn = F[m, n]
-                    A_mn = assemble_surface(mesh, ordre, coef_mn, opu, opv, methode)
+                    A_mn = assemble_surface(mesh, ordre, coef_mn, opu, opv, methode=methode,domaine=domaine)
                     add_hyperbo(m, n, A_mn, Mat, Nglob)
             return Mat
             
@@ -212,14 +250,8 @@ def assemble_hyperbo(
         if Ftype == "F0type":
             # Nombre de faces internes (comptées une fois)
             triangles = np.asarray(mesh.cells_dict["triangle"])
-            neighbors, neighbor_faces, edges_to_triangles = build_neighborhood_structure(triangles)
-            n_faces_int = 0
-            for T in range(NT):
-                for Face in range(3):
-                    V = neighbors[T, Face]
-                    if V >= 0 and T < V:  # on compte chaque face interne une fois (T < V)
-                        n_faces_int += 1
-            nnz_est = max(1, 4 * n_faces_int * Nloc * Nloc)
+            N_faces_int = count_interior_faces(mesh)
+            nnz_est = max(1, 4 * N_faces_int * Nloc * Nloc)
             Mat = COOMatrix(d*Nglob, d*Nglob, d**2 * nnz_est)  # Estimation du nombre d'entrées non nulles
             for m in range(d):
                 for n in range(d):
@@ -330,3 +362,417 @@ def plot_nodal_vector_hyperbolique(mesh, U, d, ordre, methode="DG"):
     for m in range(d):
         comp_m = U[m * Nglob:(m + 1) * Nglob]
         plot_nodal_vector_DG(U=comp_m,mesh=mesh, ordre=ordre, title=f"Composante {m}")
+
+def build_acoustic_matrices(kappa):
+    h = lambda x, y: -1.j * kappa
+    ZERO = lambda x, y: 0.0
+    UN = lambda x, y: 1.0
+    F0 = np.array([
+        [h, ZERO, ZERO],
+        [ZERO, h, ZERO],
+        [ZERO, ZERO, h]
+    ], dtype=object)
+
+    Fx = np.array([
+        [ZERO, UN,   ZERO],
+        [UN,   ZERO, ZERO],
+        [ZERO, ZERO, ZERO]
+    ], dtype=object)
+
+    Fy = np.array([
+        [ZERO, ZERO, UN],
+        [ZERO, ZERO, ZERO],
+        [UN,   ZERO, ZERO]
+    ], dtype=object)
+
+    return F0, Fx, Fy
+
+def build_penalty_matrices():
+    ZERO = lambda x, y: 0.0
+    UN = lambda x, y: 1.0
+    func_F_p = np.array([
+        [UN,   ZERO, ZERO],
+        [ZERO, ZERO, ZERO],
+        [ZERO, ZERO, ZERO]
+    ], dtype=object)
+
+    func_F_vx = np.array([
+        [ZERO, ZERO, ZERO],
+        [ZERO, UN,   ZERO],
+        [ZERO, ZERO, ZERO]
+    ], dtype=object)
+
+    func_F_vy = np.array([
+        [ZERO, ZERO, ZERO],
+        [ZERO, ZERO, ZERO],
+        [ZERO, ZERO, UN]
+    ], dtype=object)
+
+    func_F_cross = np.array([
+        [ZERO, ZERO, ZERO],
+        [ZERO, ZERO, UN],
+        [ZERO, UN,   ZERO]
+    ], dtype=object)
+
+    return func_F_p, func_F_vx, func_F_vy, func_F_cross
+
+def assemble_saut_acoustique(mesh, ordre, kappa):
+    _, Fx, Fy = build_acoustic_matrices(kappa)
+    func_F_p, func_F_vx, func_F_vy, func_F_cross = build_penalty_matrices()
+
+    A_p_TT = assemble_hyperbo(
+        mesh, ordre, opu="uT", opv="vT",
+        F=func_F_p, kind="squelette_element", methode="DG", domaine="all")
+    A_p_TV = assemble_hyperbo(
+        mesh, ordre, opu="uT", opv="vV",
+        F=func_F_p, kind="squelette_element", methode="DG", domaine="all")
+    A_xx_TT = assemble_hyperbo(
+        mesh, ordre, opu="nxuT", opv="nxvT",
+        F=func_F_vx, kind="squelette_element", methode="DG", domaine="all")
+    A_xx_TV = assemble_hyperbo(
+        mesh, ordre, opu="nxuT", opv="nxvV",
+        F=func_F_vx, kind="squelette_element", methode="DG", domaine="all")
+    A_yy_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nyvT",
+        F=func_F_vy, kind="squelette_element", methode="DG", domaine="all")
+    A_yy_TV = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nyvV",
+        F=func_F_vy, kind="squelette_element", methode="DG", domaine="all")
+    A_yx_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nxvT",
+        F=func_F_cross, kind="squelette_element", methode="DG", domaine="all")
+    A_yx_TV = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nxvV",
+        F=func_F_cross, kind="squelette_element", methode="DG", domaine="all")
+    A_px_TT = assemble_hyperbo(
+        mesh, ordre, opu="nxuT", opv="vT",
+        F=Fx, kind="squelette_element", methode="DG", domaine="all")
+    A_px_TV = assemble_hyperbo(
+        mesh, ordre, opu="nxuV", opv="vT",
+        F=Fx, kind="squelette_element", methode="DG", domaine="all")
+    A_py_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="vT",
+        F=Fy, kind="squelette_element", methode="DG", domaine="all")
+    A_py_TV = assemble_hyperbo(
+        mesh, ordre, opu="nyuV", opv="vT",
+        F=Fy, kind="squelette_element", methode="DG", domaine="all")
+
+    blocs = [
+        (+1, A_p_TT),
+        (-1, A_p_TV),
+        (+1, A_xx_TT),
+        (+1, A_xx_TV),
+        (+1, A_yy_TT),
+        (+1, A_yy_TV),
+        (+1, A_yx_TT),
+        (+1, A_yx_TV),
+        (+1, A_px_TT),
+        (+1, A_px_TV),
+        (+1, A_py_TT),
+        (+1, A_py_TV),
+    ]
+    MATRICE_INTERIEURE = assemble_signed_blocks(blocs)
+    return MATRICE_INTERIEURE
+
+def assemble_frontiere_coercif(mesh, ordre):
+    func_F_p, func_F_vx, func_F_vy, func_F_cross = build_penalty_matrices()
+    A_p_TT = assemble_hyperbo(
+        mesh, ordre, opu="u", opv="v",
+        F=func_F_p, kind="frontiere", methode="DG", domaine="all")
+    A_xx_TT = assemble_hyperbo(
+        mesh, ordre, opu="nxu", opv="nxv",
+        F=func_F_vx, kind="frontiere", methode="DG", domaine="all")
+    A_yy_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyu", opv="nyv",
+        F=func_F_vy, kind="frontiere", methode="DG", domaine="all")
+    A_yx_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyu", opv="nxv",
+        F=func_F_cross, kind="frontiere", methode="DG", domaine="all")
+
+    blocs = [
+        (+1, A_p_TT),
+        (+1, A_xx_TT),
+        (+1, A_yy_TT),
+        (+1, A_yx_TT),
+    ]
+    Mat_bord = assemble_signed_blocks(blocs)
+    return Mat_bord
+
+def assemble_penalisation_interieure(mesh, ordre,kappa):
+    _, Fx, Fy = build_acoustic_matrices(kappa)
+    func_F_p, func_F_vx, func_F_vy, func_F_cross = build_penalty_matrices()
+    A_p_TT = assemble_hyperbo(
+        mesh, ordre, opu="uT", opv="vT",
+        F=func_F_p, kind="squelette_element", methode="DG", domaine="all")
+    A_p_TV = assemble_hyperbo(
+        mesh, ordre, opu="uT", opv="vV",
+        F=func_F_p, kind="squelette_element", methode="DG", domaine="all")
+    A_xx_TT = assemble_hyperbo(
+        mesh, ordre, opu="nxuT", opv="nxvT",
+        F=func_F_vx, kind="squelette_element", methode="DG", domaine="all")
+    A_xx_TV = assemble_hyperbo(
+        mesh, ordre, opu="nxuT", opv="nxvV",
+        F=func_F_vx, kind="squelette_element", methode="DG", domaine="all")
+    A_yy_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nyvT",
+        F=func_F_vy, kind="squelette_element", methode="DG", domaine="all")
+    A_yy_TV = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nyvV",
+        F=func_F_vy, kind="squelette_element", methode="DG", domaine="all")
+    A_yx_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nxvT",
+        F=func_F_cross, kind="squelette_element", methode="DG", domaine="all")
+    A_yx_TV = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nxvV",
+        F=func_F_cross, kind="squelette_element", methode="DG", domaine="all")
+
+    blocs = [
+        (+1, A_p_TT),
+        (-1, A_p_TV),
+        (+1, A_xx_TT),
+        (+1, A_xx_TV),
+        (+1, A_yy_TT),
+        (+1, A_yy_TV),
+        (+1, A_yx_TT),
+        (+1, A_yx_TV),]
+    Mat_penalisation = assemble_signed_blocks(blocs)
+    return Mat_penalisation
+
+
+def assemble_interieur_coercif(mesh, ordre, kappa):
+    _, Fx, Fy = build_acoustic_matrices(kappa)
+    func_F_p, func_F_vx, func_F_vy, func_F_cross = build_penalty_matrices()
+    A_p_TT = assemble_hyperbo(
+        mesh, ordre, opu="uT", opv="vT",
+        F=func_F_p, kind="squelette_element", methode="DG", domaine="all")
+    A_p_TV = assemble_hyperbo(
+        mesh, ordre, opu="uT", opv="vV",
+        F=func_F_p, kind="squelette_element", methode="DG", domaine="all")
+    A_xx_TT = assemble_hyperbo(
+        mesh, ordre, opu="nxuT", opv="nxvT",
+        F=func_F_vx, kind="squelette_element", methode="DG", domaine="all")
+    A_xx_TV = assemble_hyperbo(
+        mesh, ordre, opu="nxuT", opv="nxvV",
+        F=func_F_vx, kind="squelette_element", methode="DG", domaine="all")
+    A_yy_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nyvT",
+        F=func_F_vy, kind="squelette_element", methode="DG", domaine="all")
+    A_yy_TV = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nyvV",
+        F=func_F_vy, kind="squelette_element", methode="DG", domaine="all")
+    A_yx_TT = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nxvT",
+        F=func_F_cross, kind="squelette_element", methode="DG", domaine="all")
+    A_yx_TV = assemble_hyperbo(
+        mesh, ordre, opu="nyuT", opv="nxvV",
+        F=func_F_cross, kind="squelette_element", methode="DG", domaine="all")
+    A_px_TV = assemble_hyperbo(
+        mesh, ordre, opu="nxuV", opv="vT",F=Fx, kind="squelette_element", methode="DG", domaine="all")
+    A_py_TV = assemble_hyperbo(
+        mesh, ordre, opu="nyuV", opv="vT",F=Fy, kind="squelette_element", methode="DG", domaine="all")
+
+    blocs = [
+        (+1, A_p_TT),
+        (-1, A_p_TV),
+        (+1, A_xx_TT),
+        (+1, A_xx_TV),
+        (+1, A_yy_TT),
+        (+1, A_yy_TV),
+        (+1, A_yx_TT),
+        (+1, A_yx_TV),
+        (+1, A_px_TV),
+        (+1, A_py_TV),
+    ]
+    Mat_coercive = assemble_signed_blocks(blocs)
+    return Mat_coercive
+
+def assemble_volume_acoustique(mesh, ordre, kappa): 
+    F0, Fx, Fy = build_acoustic_matrices(kappa)
+    blocs=[]
+    # Volume
+    M0 = assemble_hyperbo(mesh, ordre, opu="u",   opv="v", F=F0, kind="volume", methode="DG", domaine="all")
+    Mx = assemble_hyperbo(mesh, ordre, opu="dxu", opv="v", F=Fx, kind="volume", methode="DG", domaine="all")
+    My = assemble_hyperbo(mesh, ordre, opu="dyu", opv="v", F=Fy, kind="volume", methode="DG", domaine="all")
+    blocs=[
+        (+1, M0),
+        (+1, Mx),
+        (+1, My)
+    ]
+    MATRICE_VOLUME = assemble_signed_blocks(blocs)
+    return MATRICE_VOLUME
+
+def assemble_volume_acoustique_consistant(mesh, ordre, kappa):
+    F0, Fx, Fy = build_acoustic_matrices(kappa)
+    # Volume
+    M0 = assemble_hyperbo(mesh, ordre, opu="u",   opv="v", F=F0, kind="volume", methode="DG", domaine="all")
+    Mx = assemble_hyperbo(mesh, ordre, opu="dxu", opv="v", F=Fx, kind="volume", methode="DG", domaine="all")
+    My = assemble_hyperbo(mesh, ordre, opu="dyu", opv="v", F=Fy, kind="volume", methode="DG", domaine="all")
+    blocs=[
+        (+1, M0),
+        (+1, Mx),
+        (+1, My)
+    ]
+    MATRICE_VOLUME_CONSISTANT = assemble_signed_blocks(blocs)
+    return MATRICE_VOLUME_CONSISTANT
+
+def assemble_volume_acoustique_positif(mesh, ordre, kappa): 
+    F0, Fx, Fy = build_acoustic_matrices(kappa)
+    blocs=[]
+    # Volume
+    M0 = assemble_hyperbo(mesh, ordre, opu="u",   opv="v", F=F0, kind="volume", methode="DG", domaine="all")
+    Mx = assemble_hyperbo(mesh, ordre, opu="dxu", opv="v", F=Fx, kind="volume", methode="DG", domaine="all")
+    MxT = assemble_hyperbo(mesh, ordre, opu="u", opv="dxv", F=Fx, kind="volume", methode="DG", domaine="all")
+    My = assemble_hyperbo(mesh, ordre, opu="dyu", opv="v", F=Fy, kind="volume", methode="DG", domaine="all")
+    MyT = assemble_hyperbo(mesh, ordre, opu="u", opv="dyv", F=Fy, kind="volume", methode="DG", domaine="all")
+    blocs=[
+        (+2, M0),
+        (-1, Mx),
+        (-1, My),
+        (1, MxT),
+        (1, MyT)
+    ]
+    MATRICE_VOLUME_POSITIF = assemble_signed_blocks(blocs)
+    return MATRICE_VOLUME_POSITIF
+
+def assemble_saut_reciprocite(mesh, ordre, kappa):
+    _,func_F_1, func_F_2 = build_acoustic_matrices(kappa)
+    A_px_TT = assemble_hyperbo(mesh, ordre, opu="nxuT", opv="vT",
+        F=func_F_1, kind="squelette_element", methode="DG", domaine="all")
+    A_px_TV = assemble_hyperbo(mesh, ordre, opu="nxuV", opv="vT",
+        F=func_F_1, kind="squelette_element", methode="DG", domaine="all")
+    A_py_TT = assemble_hyperbo(mesh, ordre, opu="nyuT", opv="vT",
+        F=func_F_2, kind="squelette_element", methode="DG", domaine="all")
+    A_py_TV = assemble_hyperbo(mesh, ordre, opu="nyuV", opv="vT",
+        F=func_F_2, kind="squelette_element", methode="DG", domaine="all")
+    blocs = [
+        (+1, A_px_TT),
+        (+1, A_px_TV),
+        (+1, A_py_TT),
+        (+1, A_py_TV),
+    ]
+    MATRICE_SAUT_RECIPROCITE = assemble_signed_blocks(blocs)
+    return MATRICE_SAUT_RECIPROCITE
+
+def assemble_matrice_totale_sans_frontiere(mesh, ordre, kappa):
+    M_volume = assemble_volume_acoustique(mesh, ordre, kappa)
+    M_penalisation = assemble_saut_acoustique(mesh, ordre, kappa)
+    blocs = [
+        (+1, M_volume),
+        (+1, M_penalisation)
+    ]
+    MATRICE_TOTALE_SANS_FRONTIERE = assemble_signed_blocks(blocs)
+    return MATRICE_TOTALE_SANS_FRONTIERE
+
+
+def assemble_frontiere_consistant(mesh, ordre, kappa,Z):
+    if np.isclose(Z, 0):
+       raise ValueError("Z ne doit pas être nul.")
+    else:
+        _, Fx, Fy = build_acoustic_matrices(kappa)
+        func_F_p, func_F_vx, func_F_vy, func_F_cross = build_penalty_matrices()
+        A_p_TT = assemble_hyperbo(
+            mesh, ordre, opu="u", opv="v",
+            F=func_F_p, kind="frontiere", methode="DG", domaine="all")
+        A_xx_TT = assemble_hyperbo(
+            mesh, ordre, opu="nxu", opv="nxv",
+            F=func_F_vx, kind="frontiere", methode="DG", domaine="all")
+        A_yy_TT = assemble_hyperbo(
+            mesh, ordre, opu="nyu", opv="nyv",
+            F=func_F_vy, kind="frontiere", methode="DG", domaine="all")
+        A_yx_TT = assemble_hyperbo(
+            mesh, ordre, opu="nyu", opv="nxv",
+            F=func_F_cross, kind="frontiere", methode="DG", domaine="all")
+        A_px_TT = assemble_hyperbo(
+            mesh, ordre, opu="nxu", opv="v",F=Fx, kind="frontiere", methode="DG", domaine="all")
+        A_py_TT = assemble_hyperbo(mesh, ordre, opu="nyu", opv="v",F=Fy, 
+            kind="frontiere", methode="DG", domaine="all")
+
+        blocs = [
+            (Z, A_p_TT),
+            (1/Z, A_xx_TT),
+            (1/Z, A_yy_TT),
+            (1/Z, A_yx_TT),
+            (+1, A_px_TT),
+            (+1, A_py_TT),
+        ]
+        Mat_bord = assemble_signed_blocks(blocs)
+
+        return Mat_bord
+    
+def assemble_rhs_acoustique(mesh,ordre, func_vec=None, Z=1.0, domaine="all"):
+    """
+    Assemble le second membre de frontière consistant associé à
+
+        (1/Z) (v_inc.n + Z p_inc) (v'.n + Z p')
+
+    Paramètres
+    ----------
+    func_vec : tuple de 3 callables
+        func_vec = (p_inc, v_inc_x, v_inc_y)
+
+    Retour
+    ------
+    rhs : ndarray complexe de taille 3*Nglob
+        Ordre des composantes : [p, vx, vy]
+    """
+
+    if np.isclose(Z, 0):
+       raise ValueError("Z ne doit pas être nul.")
+
+    if func_vec is None:
+        func_vec = exemple_fonction_vectorielle(np.pi/3, 2*np.pi/1.3)
+
+    if not isinstance(func_vec, (tuple, list)) or len(func_vec) != 3:
+        raise TypeError(
+            "func_vec doit être un tuple/list de 3 fonctions : (p_inc, v_inc_x, v_inc_y)."
+        )
+
+    p_inc, v_inc_x, v_inc_y = func_vec
+
+    if not (callable(p_inc) and callable(v_inc_x) and callable(v_inc_y)):
+        raise TypeError(
+            "Les trois composantes de func_vec doivent être callables."
+        )
+
+    v_inc = make_vector_field(v_inc_x, v_inc_y)
+
+    # Il y a quatre blocs à assembler pour le second membre de frontière consistant :
+
+    # Bloc 1 : ∫ Z p_inc p' ds
+    rhs_p = Z*assemble_rhs_surface(
+            mesh, ordre,f=p_inc,op_f="f",
+            op_v="v",methode="DG",domaine=domaine
+        )
+    # Bloc 2 : ∫ v_inc.n p' ds
+    rhs_p+= assemble_rhs_surface(
+            mesh, ordre,f=v_inc,op_f="f.n",
+            op_v="v",methode="DG",domaine=domaine)
+
+    # Bloc 3 : ∫ p_inc v'.n ds
+    # Le bloc 3 se divise en deux parties :
+    # ∫ p_inc nx v'_x ds
+    # ∫ p_inc ny v'_y ds
+    rhs_vx = assemble_rhs_surface(
+            mesh, ordre,f=p_inc,op_f="f",
+            op_v="nxv",methode="DG",domaine=domaine)
+    rhs_vy = assemble_rhs_surface(
+            mesh, ordre,f=p_inc,op_f="f",
+            op_v="nyv",methode="DG",domaine=domaine)
+    # Bloc 4 : ∫ (1/Z) v_inc.n v'.n ds
+    # Le bloc 4 se divise en deux parties :
+    # ∫ (1/Z) v_inc.n nx v'_x ds
+    # ∫ (1/Z) v_inc.n ny v'_y ds
+    rhs_vx += (1.0 / Z) * assemble_rhs_surface(
+            mesh, ordre,f=v_inc,
+            op_f="f.n",op_v="nxv",methode="DG",domaine=domaine)
+    rhs_vy += (1.0 / Z) * assemble_rhs_surface(
+            mesh, ordre,f=v_inc,op_f="f.n",
+            op_v="nyv",methode="DG",domaine=domaine)
+
+    Nglob = rhs_p.shape[0]
+    rhs = np.zeros(3 * Nglob, dtype=np.complex128)
+    rhs[0:Nglob] = rhs_p
+    rhs[Nglob:2*Nglob] = rhs_vx
+    rhs[2*Nglob:3*Nglob] = rhs_vy
+
+    return rhs

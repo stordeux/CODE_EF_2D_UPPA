@@ -205,13 +205,12 @@ Un exemple d’utilisation se trouve dans :
 examples/exemple_sparse.py
 
 Cet exemple illustre :
-- addition de matrices
-- addition en place
-- soustraction
-- multiplication par un scalaire
-- produit matrice-vecteur
-- produit vecteur-matrice
-- forme sesquilinéaire
-- résolution de systèmes linéaires
-- visualisation spy()
-"""
+1. addition de matrices
+2. addition en place
+3. soustraction
+4. multiplication par un scalaire
+5. produit matrice-vecteur
+6. produit vecteur-matrice
+7. forme sesquilinéaire
+8. résolution de systèmes linéaires
+9. visualisation spy()

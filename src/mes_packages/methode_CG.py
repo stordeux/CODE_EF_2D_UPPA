@@ -166,14 +166,14 @@ def nodal_CG_to_DG(U_CG:np.ndarray, mesh,ordre:int) -> np.ndarray:
 
 def scatter_nodal_vector_CG(U_CG, mesh, ordre:int, title):
     """
-    Affiche un scatter plot du vecteur nodal C0
+    Affiche un scatter plot du vecteur nodal CG
     
     Parameters:
     -----------
     U_CG : array (Nglob_CG,)
-        Vecteur nodal C0
-    glob_to_xy_CG : array (Nglob_C0, 2)
-        Coordonnées (x, y) des DDL C0
+        Vecteur nodal CG
+    glob_to_xy_CG : array (Nglob_CG, 2)
+        Coordonnées (x, y) des DDL CG
     title : str
         Titre du graphique
     """

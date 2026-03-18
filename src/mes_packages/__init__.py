@@ -1,4 +1,7 @@
-from .sparse import COOMatrix
+from .sparse import (
+    COOMatrix,
+    assemble_signed_blocks
+    )
 from .quadrature import integrate_segment_2D, integrate_segment_2D_old, integrate_triangle_2D, integrate_triangle_2D_product
 from .base import base, derivative_base, plot_function_on_triangle, loc2D_to_loc1D, loc1D_to_loc2D, vecteur_nodal_reference,fonction_from_vecteur_nodal,base_1D
 from .matrice_reference import (
@@ -32,6 +35,7 @@ from .mesh import (
     compute_element_sizes,
     create_mesh_from_polygon,
     create_mesh_polygon_with_hole,
+    count_interior_faces
     )    
 from .methode_DG import (
     build_loctoglob_DG,
@@ -102,13 +106,24 @@ from .methode_hyperbolique import (
     assemble_hyperbo,
     build_vecteur_nodal_hyperbolique,
     plot_nodal_vector_hyperbolique,
-    exemple_fonction_vectorielle
+    exemple_fonction_vectorielle,
+    assemble_saut_acoustique,
+    assemble_saut_reciprocite,
+    assemble_interieur_coercif,
+    assemble_frontiere_coercif,
+    assemble_volume_acoustique_positif,
+    assemble_volume_acoustique_consistant,
+    assemble_matrice_totale_sans_frontiere,
+    assemble_frontiere_consistant,
+    assemble_rhs_acoustique,
 )
 from .calcul_symbolique import (
-    build_f_and_grads
+    build_f_and_grads,
+    as_callable_scalar
     )
 __all__ = [
     "COOMatrix", 
+    "assemble_signed_blocks",
     "integrate_segment_2D", 
     "integrate_segment_2D_old", 
     "integrate_triangle_2D",
@@ -213,6 +228,17 @@ __all__ = [
     "compute_element_sizes",
     "build_vecteur_nodal_hyperbolique",
     "plot_nodal_vector_hyperbolique",
-    "exemple_fonction_vectorielle"
-    ]
+    "exemple_fonction_vectorielle",
+    "count_interior_faces",
+    "assemble_saut_acoustique",
+    "assemble_interieur_coercif",
+    "assemble_frontiere_coercif",
+    "assemble_volume_acoustique_positif",
+    "assemble_saut_reciprocite",
+    "assemble_volume_acoustique_consistant",
+    "assemble_matrice_totale_sans_frontiere",
+    "as_callable_scalar",
+    "assemble_frontiere_consistant",
+    "assemble_rhs_acoustique"
+]
 __version__ = "0.0.1"

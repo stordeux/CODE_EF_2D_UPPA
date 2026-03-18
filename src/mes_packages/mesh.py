@@ -1529,3 +1529,34 @@ def compute_h_min(mesh):
 
     hK = compute_element_sizes(mesh)
     return hK.min()
+
+
+def count_interior_faces(mesh):
+    """
+    Retourne le nombre de faces intérieures d'un maillage triangulaire.
+
+    Une face intérieure est une arête partagée par exactement deux triangles.
+
+    Parameters
+    ----------
+    mesh : meshio.Mesh
+        Maillage triangulaire.
+
+    Returns
+    -------
+    int
+        Nombre de faces intérieures.
+    """
+
+    import numpy as np
+
+    triangles = np.asarray(mesh.cells_dict["triangle"])
+
+    _, _, edges_to_triangles = build_neighborhood_structure(triangles)
+
+    n_faces_int = sum(
+        1 for tri_list in edges_to_triangles.values()
+        if len(tri_list) == 2
+    )
+
+    return n_faces_int

@@ -306,7 +306,19 @@ def precompute_face_ref(ordre: int, ordreq: int | None = None, dtype=np.complex1
 
 
 def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", domaine = "all"):
+    if methode in ("CG", "DG"):
+        return assemble_surface_Pk(mesh, ordre, func, operatoru, operatorv, methode, domaine=domaine)
+    elif methode == "Trefftz":
+        return assemble_surface_Trefftz(mesh, ordre, func, operatoru, operatorv, domaine)
+    else:
+        raise ValueError(f"Méthode inconnue : {methode}")
+
+def assemble_surface_Trefftz(mesh, ordre, func, operatoru, operatorv, domaine = "all"):
+    return None
+
+def assemble_surface_Pk(mesh, ordre, func, operatoru, operatorv, methode, domaine = "all"):
     # Pré-calcul ref face (UNE fois)
+    # Les EF Pk sont isoparamétriques, donc les quantités pré-calculées sur la face de référence sont réutilisables pour toutes les faces du maillage, ce qui accélère l'assemblage.
     wq, xq, yq, Phi_val, Phi_dxhat, Phi_dyhat = precompute_face_ref(ordre)
     Nloc = (ordre + 1) * (ordre + 2) // 2
 
@@ -559,7 +571,7 @@ def assemble_rhs_surface(mesh, ordre, f, op_f="f", op_v="v", methode="CG", domai
     avec
 
         op_f ∈ {"f","f.n","f.t","f.ex","f.ey"}
-        op_v ∈ {"v","dnv","dtv","dxv","dyv"}
+        op_v ∈ {"v","dnv","dtv","dxv","dyv","nxv","nyv"}
 
     - f peut être scalaire (si op_f="f")
     - sinon f doit être vectoriel : f(x,y) -> (fx,fy)
@@ -676,6 +688,12 @@ def assemble_rhs_surface(mesh, ordre, f, op_f="f", op_v="v", methode="CG", domai
 
             if op_v == "v":
                 PhiV = Phi_val[F]
+
+            elif op_v == "nxv":
+                PhiV = n[0] * Phi_val[F]
+
+            elif op_v == "nyv":
+                PhiV = n[1] * Phi_val[F]
 
             elif op_v == "dxv":
                 PhiV = Phi_dx

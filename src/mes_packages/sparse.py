@@ -592,3 +592,49 @@ class COOMatrix:
             print("Erreur lors du calcul des valeurs propres :", e)
             return False, None, None
         return ok, lam_min, eigvals
+
+def assemble_signed_blocks(blocs):
+    """
+    Assemble une matrice COO à partir d'une liste de blocs signés.
+
+    Parameters
+    ----------
+    blocs : list[(coef, COOMatrix)]
+        Liste de couples (coef, A) où
+        coef est un scalaire (généralement ±1)
+        et A une COOMatrix.
+
+    Returns
+    -------
+    COOMatrix
+        Matrice résultante somme des coef * A.
+    """
+
+    if len(blocs) == 0:
+        raise ValueError("La liste de blocs est vide")
+
+    # dimension de la matrice
+    nx, ny = blocs[0][1].shape
+
+    # nombre total de coefficients non nuls
+    nnz = sum(A.nnz for _, A in blocs)
+
+    M = COOMatrix(nx, ny, nnz)
+
+    for coef, A in blocs:
+
+        if A.shape != (nx, ny):
+            raise ValueError("Tous les blocs doivent avoir la même dimension")
+
+        if coef == 1:
+            M += A
+
+        elif coef == -1:
+            M -= A
+
+        else:
+            # cas général : coef arbitraire
+            for i in range(A.l):
+                M.ajout(A.rows[i], A.cols[i], coef * A.data[i])
+
+    return M

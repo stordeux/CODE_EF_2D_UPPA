@@ -369,9 +369,17 @@ $$
 
 utile pour les critères CFL ou les pénalisations de type SIPG.
 
+## 11. Nombre de faces intérieures
+
+    N_faces_int = count_interior_faces(mesh)
+
+Cette routine calcule le nombre de faces intérieures d’un maillage triangulaire.
+
+Une face intérieure est une arête partagée par exactement deux triangles.
+
 ---
 
-## 11. Exemples fournis
+## 12. Exemples fournis
 
 ### Exemple 1 — cercle dans un carré
 
@@ -432,7 +440,7 @@ Cet exemple est intéressant pour tester :
 
 ---
 
-## 12. Résumé des principales routines de création
+## 13. Résumé des principales routines de création
 
 Les routines de création de maillage actuellement disponibles sont donc :
 
@@ -448,7 +456,7 @@ Elles couvrent déjà trois cas importants :
 
 ---
 
-## 13. Remarque de conception
+## 14. Remarque de conception
 
 L’organisation actuelle sépare assez bien trois niveaux :
 
@@ -460,7 +468,7 @@ C’est une bonne base pour intégrer ensuite les routines d’assemblage EF, CG
 
 ---
 
-## 14. Idées d’extensions naturelles
+## 15. Idées d’extensions naturelles
 
 Parmi les extensions possibles :
 
