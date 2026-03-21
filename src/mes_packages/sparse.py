@@ -529,6 +529,34 @@ class COOMatrix:
 
         return True
     
+    def is_negative(self, tol=1e-12):
+        """
+        Teste de UTAU pour quelques vecteurs aléatoires (méthode rapide mais pas très robuste)
+        """
+
+        self.to_csr()
+        A = self.csr
+        N= self.nb_lig
+
+
+        ntests = 20
+        lam_min = +np.inf
+
+        for _ in range(ntests):
+            x = np.random.randn(N)
+            x /= np.linalg.norm(x)
+
+            Ax = A @ x
+            val = np.vdot(x, Ax).real  # énergie
+
+            lam_min = min(lam_min, val)
+
+            if val >tol:
+                return False, val
+
+        return True
+
+
     def is_zero(self, tol=1e-12):
         """
         Teste si la matrice est nulle à une tolérance près,

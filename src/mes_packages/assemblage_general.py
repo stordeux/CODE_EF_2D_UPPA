@@ -313,7 +313,17 @@ def assemble_surface(mesh, ordre, func, operatoru, operatorv, methode="CG", doma
     else:
         raise ValueError(f"Méthode inconnue : {methode}")
 
-def assemble_surface_Trefftz(mesh, ordre, func, operatoru, operatorv, domaine = "all"):
+def assemble_surface_Trefftz(mesh, ordre, func, operatoru, operatorv,base="plane_wave", domaine = "all"):
+    # operator u
+    # base
+    # u = exp(i k_n cdot x)
+    # kxu = kx_n exp(i k_n cdot x)
+    # nxdirxu = nx dirx_n exp(i k_n cdot x)
+    # diry u = ky_n exp(i k_n cdot x)
+    # ny kyu = ny ky_n exp(i k_n cdot x)
+    # k.n u = (kx_n nx + ky_n ny) exp(i k_n cdot x) 
+    # opu = "u" ou "uT"
+    # opu ikxu 
     return None
 
 def assemble_surface_Pk(mesh, ordre, func, operatoru, operatorv, methode, domaine = "all"):
@@ -1871,3 +1881,4 @@ def assemble_skeleton_par_element(mesh, ordre, coef,
             _insert_block(A, rows, cols, Mloc)
 
     return A
+

@@ -1,8 +1,7 @@
 import numpy as np
 import pytest
 from mes_packages import *
-from mes_packages import mesh
-from mes_packages.methode_hyperbolique import assemble_penalisation_interieure
+
 
 ZERO = lambda x, y: 0.0
 UN = lambda x, y: 1.0
@@ -80,8 +79,8 @@ def mesh_rhs():
 
 @pytest.mark.parametrize("ordre", [2, 3, 4])
 def test_sol_volume_acoustique(mesh_volume, ordre):
-    MAT = assemble_volume_acoustique_consistant(mesh_volume, ordre, kappa)
-    func_vec = exemple_fonction_vectorielle(theta=np.pi / 12, kappa=kappa)
+    MAT = assemble_volume_hyperbolique(mesh_volume, ordre, kappa,modele="acoustique", formulation="forte")
+    func_vec = onde_plane_acoustique(theta=np.pi / 12, kappa=kappa)
     vec_nodal = build_vecteur_nodal_hyperbolique(mesh_volume, ordre, func_vec=func_vec, methode="DG")
     res = np.linalg.norm(MAT @ vec_nodal)
     assert res < 10 ** (-ordre + 1), f"Résidu trop grand : {res}"
@@ -111,10 +110,10 @@ def test_penalisation_interieure(mesh_ipp):
     ordre = 3
     Lambda=1.3
     kappa = 1.j * 2 * np.pi / Lambda
-    PENALISATION = assemble_penalisation_interieure(mesh_ipp, ordre, kappa)
+    PENALISATION = assemble_squelette_hyperbolique(mesh_ipp, ordre, kappa,Z=2,formulation="Fplus",modele="acoustique")
     assert PENALISATION.is_positive(), "La matrice de pénalisation n'est pas positive"
 
-    func_vec = exemple_fonction_vectorielle(theta=np.pi / 12, kappa=kappa)
+    func_vec = onde_plane_acoustique(theta=np.pi / 12, kappa=kappa)
     vec_nodal = build_vecteur_nodal_hyperbolique(mesh_ipp, ordre, func_vec=func_vec, methode="DG")
     res = PENALISATION @ vec_nodal
     assert np.all(np.abs(res) < 10 ** -8), f"Résidu trop grand : {np.linalg.norm(res)}"
@@ -141,39 +140,34 @@ def test_saut_reciprocite(mesh_ipp):
     ordre = 3
     Lambda=1.3
     kappa = 1.j * 2 * np.pi / Lambda
-    Saut_reciprocite = assemble_saut_reciprocite(mesh_ipp, ordre, kappa)
-    func_vec = exemple_fonction_vectorielle(theta=np.pi / 12, kappa=kappa)
+    Saut_reciprocite =  assemble_squelette_hyperbolique(mesh_ipp, ordre, kappa, Z=2, formulation="Fplus", modele="acoustique")
+    func_vec = onde_plane_acoustique(theta=np.pi / 12, kappa=kappa)
     vec_nodal = build_vecteur_nodal_hyperbolique(mesh_ipp, ordre, func_vec=func_vec, methode="DG")
     assert np.linalg.norm(Saut_reciprocite@vec_nodal)<1e-10, "Le saut de réciprocité n'est pas nul"
 
 
-def test_continuite_interieure(mesh_ipp):
+def test_continuite_Fmoins(mesh_ipp):
     ordre = 3
     Lambda=1.3
     kappa = 1.j * 2 * np.pi / Lambda
-    MATRICE_INTERIEURE = assemble_saut_acoustique(mesh_ipp, ordre, kappa)
-    func_vec = exemple_fonction_vectorielle(theta=np.pi / 12, kappa=kappa)
+    MATRICE_INTERIEURE = assemble_squelette_hyperbolique(mesh_ipp, ordre, kappa, Z=2, formulation="Fmoins", modele="acoustique")
+    func_vec = onde_plane_acoustique(theta=np.pi / 12, kappa=kappa)
     vec_nodal = build_vecteur_nodal_hyperbolique(mesh_ipp, ordre, func_vec=func_vec, methode="DG")
-
     erreur = np.linalg.norm(MATRICE_INTERIEURE @ vec_nodal)
     assert erreur < 1e-8, f"Résidu de continuité trop grand : {erreur}"
-def test_positivite_frontiere(mesh_ipp):
-    ordre = 3
-    MAT = assemble_frontiere_coercif(mesh_ipp, ordre)
-    assert MAT.is_positive(), "test du caractère positif de la matrice"
 
-def test_positivite_interieure(mesh_ipp):
+def test_positivite_frontiere(mesh_ipp):
     ordre = 3
     Lambda=1.3
     kappa = 1.j * 2 * np.pi / Lambda
-    Mat_coercive = assemble_interieur_coercif(mesh_ipp, ordre, kappa)
-    assert Mat_coercive.is_positive(), "test du caractère positif de la matrice"
+    MAT = assemble_frontiere_hyperbolique(mesh_ipp, ordre, kappa,modele="acoustique", formulation="positif")
+    assert MAT.is_positive(), "test du caractère positif de la matrice"
 
 def test_positivite_volume(mesh_volume):
     ordre = 3
     Lambda=1.3
     kappa = 1.j * 2 * np.pi / Lambda
-    Mat_coercive = assemble_volume_acoustique_positif(mesh_volume, ordre, kappa)
+    Mat_coercive = assemble_volume_hyperbolique(mesh_volume, ordre, kappa,modele="acoustique", formulation="positif")
     assert Mat_coercive.is_positive(), "test du caractère positif de la matrice"
 
 def test_matrice_sauf_frontière(mesh_ipp):
@@ -183,7 +177,7 @@ def test_matrice_sauf_frontière(mesh_ipp):
     MAT = assemble_matrice_totale_sans_frontiere(mesh_ipp, ordre, kappa)
 
 
-    func_vec = exemple_fonction_vectorielle(theta=np.pi / 12, kappa=kappa)
+    func_vec = onde_plane_acoustique(theta=np.pi / 12, kappa=kappa)
     vec_nodal = build_vecteur_nodal_hyperbolique(mesh_ipp, ordre, func_vec=func_vec, methode="DG")
     erreur = np.linalg.norm(MAT @ vec_nodal)
     assert erreur < 1e-6, f"Résidu de continuité trop grand : {erreur}"
@@ -193,9 +187,9 @@ def test_frontiere_consistante(mesh_rhs):
     ordre = 4
     Lambda=1.3
     kappa = 1.j * 2 * np.pi / Lambda
-    MAT = assemble_frontiere_consistant(mesh_rhs, ordre, kappa,Z=2.0)
+    MAT = assemble_frontiere_hyperbolique(mesh_rhs, ordre, kappa,modele="acoustique", formulation="Fplus", Z=2)
     assert MAT.is_positive(), "La matrice de frontière consistante n'est pas positive"
-    func_vec = exemple_fonction_vectorielle(theta=np.pi / 12, kappa=kappa)
+    func_vec = onde_plane_acoustique(theta=np.pi / 12, kappa=kappa)
     vec_nodal = build_vecteur_nodal_hyperbolique(mesh_rhs, ordre, func_vec=func_vec, methode="DG")
     RHS = assemble_rhs_acoustique(mesh_rhs, ordre, func_vec=func_vec, Z=2.0)
     erreur = np.linalg.norm(MAT @ vec_nodal-RHS)
