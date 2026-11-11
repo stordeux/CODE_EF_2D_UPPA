@@ -41,14 +41,14 @@ STUDENT ACCESS
 
 Students have read-only access via GitLab UPPA.
 
-Permissions:
+Access rights on the GitLab UPPA repository:
 
 - Clone the repository
 - Download the source code
-- No push access
-- No modification rights
+- No push access (read-only)
 
-The repository must not be redistributed.
+The source code is released under the MIT License (see `LICENSE`). The access
+rules above and the academic-integrity rules below concern the course, not the licence.
 
 ---
 
@@ -268,9 +268,8 @@ A taper dans un powershell
 
 ACADEMIC INTEGRITY
 
-This repository is provided strictly for educational use.
-
-Students must:
+This repository is provided for educational use. In the context of the course,
+students must:
 
 - Work independently
 - Not redistribute solutions
