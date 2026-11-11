@@ -27,7 +27,7 @@ nav:
   - Théorie des éléments finis:
       - Eléments finis continus (CG): fem.md
       - Méthode SIPDG: sipdg.md
-      - Formalisme hyperbolique DG: hyperbo.md
+      # - Formalisme hyperbolique DG: hyperbo.md   # page à écrire (absente de docs/ au 2026-11-11)
   - Description du maillage:
       - Les structures de maillage: mesh_1.md
       - Un exemple de maillage: mesh_2.md
@@ -36,11 +36,12 @@ nav:
       - Element finis continus CG:
           - Matrices variables CG: exemple_general_CG.md
           - Un problème de Helmholtz CG: exemple_helmholtz_CG.md
+          - Diffraction aéroacoustique CG: exemple_aeroac_CG.md
       - Formulation SIPDG:
           - Un problème de Helmholtz en SIPDG: exemple_helmholtz_sipdg.md
-      - Formalisme hyperbolique DG:
-          - Exemple hyperbolique: exemple_hyperbo.md
-          - Exemple hyperbolique 2: exemple_hyperbo_2.md
+      # - Formalisme hyperbolique DG:              # pages à écrire (absentes de docs/ au 2026-11-11)
+      #     - Exemple hyperbolique: exemple_hyperbo.md
+      #     - Exemple hyperbolique 2: exemple_hyperbo_2.md
 
   - API:
       - Assemblage des matrices volumiques: assemble_volume.md
